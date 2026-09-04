@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { geometry, makeSprites, renderCanvas, lampRegion, type Geometry } from './render/bulbs';
+import { geometry, makeSprites, renderCanvas, lampRegion, drawSocketField, type Geometry } from './render/bulbs';
 import { composeStatic, composeChart, CHART_BAND, rowRect, rowIndexForProp, WIDE_COLS, WIDE_ROWS, type FrameState } from './render/coldOpen';
 import { boardMenu, formatPayout } from './game/menu';
 import { beatTempo, TURBO_BEAT_MS } from './game/tempo';
 import { curve } from './render/replay';
 import { ticketRow, type PropId } from './game/codec';
 import { dealBoard, settleLocally, isEmbedded } from './bridge/demoHost';
+import { composeWordmark, BOOT_MS } from './render/boot';
+import { WORDMARK_PATHS, WORDMARK_ADV, WORDMARK_CAP, WORDMARK_LAMPS } from './render/wordmark';
 import './styles/crt.css';
 
 /** Deal 0 of the published seed renders HOME 8 — AWAY 5 on first load, so the cold-open
@@ -18,6 +20,8 @@ export function App() {
   const spritesRef = useRef<ReturnType<typeof makeSprites> | null>(null);
   const timers = useRef<number[]>([]);
   const [turbo, setTurbo] = useState(false);
+  const [boot, setBoot] = useState(true);
+  const [markBox, setMarkBox] = useState<{ l: number; t: number; w: number; h: number } | null>(null);
   const [st, setSt] = useState<FrameState>({
     ...FIRST, phase: 'idle', propId: null, hover: null, result: null,
     beat: 0, headHot: false, ghost: false,
@@ -51,10 +55,30 @@ export function App() {
     const geo = geoRef.current, sprites = spritesRef.current!;
     const base = baseRef.current!;
 
+    if (boot) {
+      // the bulb wordmark, waiting under the chrome overlay for the handoff
+      ctx.fillStyle = '#05060B';
+      ctx.fillRect(0, 0, c.width, c.height);
+      drawSocketField(ctx, geo);
+      renderCanvas(composeWordmark(4), ctx, geo, sprites);
+      lastStaticKey.current = '';
+      // Hand the chrome overlay the EXACT box the bulb wordmark occupies, in CSS px, so
+      // the two are superimposed rather than merely both centred.
+      const pcss = geo.pitch / dpr, x0 = geo.x0 / dpr, y0 = geo.y0 / dpr;
+      setMarkBox({
+        l: x0 + Math.round((WIDE_COLS - WORDMARK_LAMPS.w) / 2) * pcss,
+        t: y0 + Math.round((WIDE_ROWS - WORDMARK_LAMPS.h) / 2) * pcss,
+        w: WORDMARK_LAMPS.w * pcss,
+        h: WORDMARK_LAMPS.h * pcss,
+      });
+      return;
+    }
+
     if (lastStaticKey.current !== staticKey) {
       const bctx = base.getContext('2d', { alpha: false })!;
       bctx.fillStyle = '#05060B';
       bctx.fillRect(0, 0, base.width, base.height);
+      drawSocketField(bctx, geo); // the unlit lattice, under everything
       renderCanvas(composeStatic(st), bctx, geo, sprites);
       lastStaticKey.current = staticKey;
     }
@@ -62,12 +86,17 @@ export function App() {
     const region = lampRegion(geo, sprites, CHART_BAND.c0, CHART_BAND.r0, CHART_BAND.c1, CHART_BAND.r1);
     ctx.drawImage(base, 0, 0);                                  // cheap GPU blit
     renderCanvas(composeChart(st), ctx, geo, sprites, region);   // ~13x fewer pixels
-  }, [st, staticKey]);
+  }, [st, staticKey, boot]);
 
   useEffect(() => {
     const onResize = (): void => { geoRef.current = null; setSt(s => ({ ...s })); };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setBoot(false), BOOT_MS);
+    return () => clearTimeout(t);
   }, []);
 
   const clearTimers = (): void => { timers.current.forEach(clearTimeout); timers.current = []; };
@@ -175,16 +204,39 @@ export function App() {
         onPointerDown={onDown}
         style={{ cursor: st.phase === 'idle' && st.hover !== null ? 'pointer' : st.phase === 'settled' ? 'pointer' : 'default' }}
       />
+      {/* ui.md §1.4 — the one gradient in the build, for 400ms, once per page load.
+          It dissolves and the same word remains, in bulbs. That is the thesis. */}
+      {boot && markBox && (
+        <svg
+          className="boot"
+          aria-hidden="true"
+          viewBox={`0 ${-WORDMARK_CAP} ${WORDMARK_ADV} ${WORDMARK_CAP}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ left: markBox.l, top: markBox.t, width: markBox.w, height: markBox.h }}
+        >
+          <defs>
+            {/* the poster's .chrome ramp, verbatim — the one gradient in the build */}
+            <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#FFFFFF" /><stop offset="35%" stopColor="#D9E2EC" />
+              <stop offset="49%" stopColor="#7C8BA0" /><stop offset="50%" stopColor="#232C38" />
+              <stop offset="62%" stopColor="#9FB0C2" /><stop offset="100%" stopColor="#E6EDF5" />
+            </linearGradient>
+          </defs>
+          {WORDMARK_PATHS.map(p => (
+            <path key={p.x} d={p.d} transform={`translate(${p.x} 0)`} fill="url(#chrome)" />
+          ))}
+        </svg>
+      )}
       {/* ui.md §2.6 exception 2 of 3: the meta readout is mono type, never lamps. */}
-      <p className="meta">RTP 97% · MAX 96.03× · ENTROPY SEEDED KECCAK</p>
+      {!boot && <p className="meta">RTP 97% · MAX 96.03× · ENTROPY SEEDED KECCAK</p>}
       {/* The settled controls band belongs to the lamp layer (NO PAY / CLICK TO DEAL
           AGAIN), so the DOM button stands down rather than printing over it. */}
-      {st.phase !== 'settled' && (
+      {!boot && st.phase !== 'settled' && (
         <button className="turbo" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
           TURBO {turbo ? 'ON' : 'OFF'}
         </button>
       )}
-      {!isEmbedded() && <p className="demo">DEMO · PLAY MONEY</p>}
+      {!boot && !isEmbedded() && <p className="demo">DEMO · PLAY MONEY</p>}
       <div className="crt" />
       <div className="vignette" />
       <p className="sr">

@@ -73,3 +73,14 @@ body {
 .turbo[aria-pressed='true'] { color: #3DFF6E; }
 /* ui.md §2.6 exception 3 of 3 — the DEMO badge. Standalone mode is play money and says so. */
 .demo { right: 3.2%; top: 3%; color: var(--amber-2); pointer-events: none; }
+
+/* THE ONE GRADIENT IN THE BUILD (ui.md §1.4). The poster's own chrome ramp, verbatim.
+   It exists here and nowhere else: the boot wordmark, 400ms, once per page load. After
+   the handoff nothing in this product is ever a gradient again. */
+.boot {
+  position: absolute;
+  pointer-events: none;
+  animation: handoff 400ms ease-out 300ms both;
+}
+@keyframes handoff { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .boot { animation-duration: 1ms; } }

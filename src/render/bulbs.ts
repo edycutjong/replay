@@ -123,9 +123,9 @@ export class Field {
   }
 
   /** TEXT at scale 1; SCORE is this at scale 4 — more lamps, not a second typeface. */
-  text(c: number, r: number, str: string, ink: Ink, duty: number, scale = 1): this {
+  text(c: number, r: number, str: string, ink: Ink, duty: number, scale = 1, track = 0): this {
     if (!SCALES.includes(scale)) throw new Error(`type scale ${scale} — ui.md §3 declares TWO scales`);
-    const s = String(str).toUpperCase(), adv = ADVANCE * scale;
+    const s = String(str).toUpperCase(), adv = ADVANCE * scale + track;
     for (let i = 0; i < s.length; i++) {
       const g = FONT[s[i]];
       if (!g) { if (s[i] !== ' ') throw new Error(`glyph not in the 45-set: ${JSON.stringify(s[i])}`); continue; }
@@ -145,9 +145,18 @@ export class Field {
     return this.rect(c, r + Math.round((GLYPH_H * scale - h) / 2), w, h, ink, duty);
   }
 
-  static textWidth(str: string, scale = 1): number {
-    return Math.max(0, str.length - 1) * (ADVANCE * scale) + GLYPH_W * scale;
+  static textWidth(str: string, scale = 1, track = 0): number {
+    return Math.max(0, str.length - 1) * (ADVANCE * scale + track) + GLYPH_W * scale;
   }
+
+  /** THE wordmark, drawn the one way it is allowed to be drawn: 4x with 7 lamp columns
+   *  of extra tracking -> 175 x 28 lamps. The tracking is not taste — the boot handoff
+   *  superimposes Archivo Black's REPLAY on this one and dissolves it, so the two must
+   *  occupy the same box on both axes (aspect 6.25 vs the typeface's 6.342). */
+  wordmark(c: number, r: number, ink: Ink, duty: number): this {
+    return this.text(c, r, 'REPLAY', ink, duty, 4, 7);
+  }
+  static wordmarkWidth(): number { return Field.textWidth('REPLAY', 4, 7); }
   static scoreBarWidth(scale = 4): number { return 4 * scale; }
   static glyphH(scale = 1): number { return GLYPH_H * scale; }
 }
@@ -296,3 +305,33 @@ export function lampRegion(geo: Geometry, sprites: Sprites, c0: number, r0: numb
   return { x, y, w: Math.ceil((c1 - c0 + 1) * geo.pitch) + pad * 2, h: Math.ceil((r1 - r0 + 1) * geo.pitch) + pad * 2 };
 }
 export type { Sprites };
+
+/**
+ * THE SOCKET FIELD — ui.md §2.1's third substrate value. A real bulb board is a lattice
+ * of sockets, most of them dark; without it, lit lamps float on void and the frame reads
+ * as text on black rather than as hardware with most of its lamps off. It is also what
+ * makes the lit lamps read as *lit* — a bulb is only bright relative to its neighbours.
+ *
+ * Drawn as a tiled pattern rather than ~39,000 individual dots (256 x 152 positions).
+ * The pattern is PHASED TO THE BOARD ORIGIN: a canvas pattern tiles from user-space
+ * (0,0), not from the rect it fills, so filling the board rect directly would sit the
+ * sockets off the lamp lattice by whatever x0 mod pitch happens to be — the asset
+ * pipeline shipped exactly that bug, and every lit lamp carried a dark crescent.
+ */
+export function drawSocketField(ctx: CanvasRenderingContext2D, geo: Geometry): void {
+  const tile = document.createElement('canvas');
+  tile.width = geo.pitch; tile.height = geo.pitch;
+  const t = tile.getContext('2d')!;
+  const d = Math.max(1, geo.dia * 0.5);
+  t.fillStyle = '#12151C';
+  t.beginPath();
+  t.arc(geo.pitch / 2, geo.pitch / 2, d / 2, 0, Math.PI * 2);
+  t.fill();
+  const pat = ctx.createPattern(tile, 'repeat');
+  if (!pat) return;
+  ctx.save();
+  ctx.translate(geo.x0, geo.y0); // phase the lattice to the board, not to the canvas
+  ctx.fillStyle = pat;
+  ctx.fillRect(0, 0, geo.w, geo.h);
+  ctx.restore();
+}
