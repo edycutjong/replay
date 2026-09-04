@@ -49,11 +49,13 @@ body {
 /* ui.md §2.6 exception 2 of 3. The meta readout is the honesty surface — declared RTP,
    max multiplier, entropy source — and it is mono type because it carries characters
    ('%') that the 45-glyph lamp set deliberately does not contain. */
+/* Top-left, opposite the DEMO badge. It was centred under the score, which put it
+   straight through the chart's envelope wedge — reported as overlapping text. The
+   honesty surface belongs at the edge of the cabinet, not across the reveal. */
 .meta {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  top: 25.5%;
-  font-size: clamp(8px, 0.95vw, 13px);
-  color: var(--amber-3);
+  position: absolute; left: 3.2%; top: 3%;
+  font-size: clamp(7px, 0.72vw, 10px);
+  color: var(--amber-2);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -61,16 +63,33 @@ body {
 /* Controls. Interactive states are DUTY steps, not overlays — a row's multiplier is not
    bigger than its name, it is brighter (ui.md §2.2). These two DOM controls are the
    exception the canvas cannot own: a real button, focusable and hit-testable. */
-.turbo, .demo {
+.demo {
   position: absolute; font: inherit; font-size: clamp(7px, 0.72vw, 10px);
   letter-spacing: 0.14em; background: none; border: 0; padding: 2px 4px;
 }
-.turbo {
-  left: 3.2%; bottom: 11.2%; color: var(--amber-3); cursor: pointer;
-  /* sits in the controls band the lamp layer deliberately leaves empty */
+
+/* THE CABINET BUTTONS. Reported as unclear whether anything was clickable, so these
+   read as switches on the housing: a bezel-steel border, an indicator lamp, and a real
+   focus ring. Bezel steel is the one non-emissive surface in the palette that is allowed
+   to catch light (ui.md §2.1), which is exactly what a physical button is. */
+.controls {
+  position: absolute; left: 3.2%; bottom: 12.8%;
+  display: flex; gap: 10px; align-items: center;
 }
-.turbo:hover, .turbo:focus-visible { color: var(--amber-4); outline: none; }
-.turbo[aria-pressed='true'] { color: #3DFF6E; }
+.btn {
+  font: inherit; font-size: clamp(7px, 0.72vw, 10px); letter-spacing: 0.14em;
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #0A0C13; color: var(--amber-3);
+  border: 2px solid var(--bezel); padding: 4px 8px; cursor: pointer;
+}
+.btn:hover { color: var(--amber-4); border-color: #3a4757; }
+.btn:focus-visible { outline: 2px solid var(--amber-4); outline-offset: 2px; }
+.btn .lamp {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #12151C; box-shadow: none;
+}
+.btn[aria-pressed='true'] { color: #3DFF6E; border-color: #1C7A34; }
+.btn[aria-pressed='true'] .lamp { background: #3DFF6E; box-shadow: 0 0 6px #3DFF6E; }
 /* ui.md §2.6 exception 3 of 3 — the DEMO badge. Standalone mode is play money and says so. */
 .demo { right: 3.2%; top: 3%; color: var(--amber-2); pointer-events: none; }
 
@@ -85,10 +104,14 @@ body {
 @keyframes handoff { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .boot { animation-duration: 1ms; } }
 
-.snd {
-  position: absolute; left: 13%; bottom: 11.2%;
-  font: inherit; font-size: clamp(7px, 0.72vw, 10px); letter-spacing: 0.14em;
-  background: none; border: 0; padding: 2px 4px; color: var(--amber-3); cursor: pointer;
+
+
+/* The premise, in one line, at the top of the cabinet. Every other surface tells you the
+   odds; this one tells you the GAME — that the outcome is already known and what you are
+   actually buying is the route it took. */
+.pitch {
+  position: absolute; left: 50%; transform: translateX(-50%); top: 3%;
+  font-size: clamp(7px, 0.78vw, 11px);
+  color: var(--amber-3); white-space: nowrap; pointer-events: none;
 }
-.snd:hover, .snd:focus-visible { color: var(--amber-4); outline: none; }
-.snd[aria-pressed='true'] { color: #3DFF6E; }
+@media (max-width: 900px) { .pitch { display: none; } }

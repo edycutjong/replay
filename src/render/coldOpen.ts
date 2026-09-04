@@ -15,14 +15,16 @@ export const WIDE_COLS = 256, WIDE_ROWS = 152;
 
 export const R = {
   scoreY: 4,
+  /** the row-select indicator: an unlit socket ring that lights when you pick it */
+  lampX: 8,
   // The chart is the reveal, and the reveal is the product. It gets 30 rows, which at
   // rowStep 2 holds the full -6..+7 range of the widest board with headroom.
   chartY: 34, chartH: 13 * CHART_ROWSTEP + 2,  // 13 units is every board, exactly
   headY: 71,
   rowY: 81, rowStep: 8,
-  ctrlY: 133,
-  rulesY: 142,
-  nameX: 8,
+  ctrlY: 132,
+  rulesY: 141,
+  nameX: 18,
   countRight: 200,
   payRight: 248,
 } as const;
@@ -149,11 +151,15 @@ export function composeFrame(s: FrameState): Field {
   }
 
   // ---- menu head ----------------------------------------------------------------
+  // The head is a LABEL and the rows below it are BUTTONS, so it must not look like one:
+  // it sits a duty lower, starts at the lamp column rather than the name column, and a
+  // rule fences it off from the list. Reported as "hard to tell which is clickable".
   if (s.phase === 'idle') {
-    f.text(R.nameX, R.headY, `${fmtCount(rows[0].total)} ORDERS END ${w}−${s.l} · PICK ONE`, 'amber', 3);
+    f.text(R.lampX, R.headY, `${fmtCount(rows[0].total)} WAYS TO REACH ${w}−${s.l}`, 'amber', 2);
   } else if (s.result) {
-    f.text(R.nameX, R.headY, formatPathId(s.result.pathId, rows[0].total), 'amber', 3);
+    f.text(R.lampX, R.headY, formatPathId(s.result.pathId, rows[0].total), 'amber', 2);
   }
+  f.run(R.lampX, R.headY + 9, R.payRight - R.lampX, 'h', 'amber', 1, 2);
 
   // ---- the priced rows. Hierarchy is DUTY, never size (ui.md §2.2). ----
   rows.forEach((row, i) => {
@@ -172,6 +178,15 @@ export function composeFrame(s: FrameState): Field {
       duty = 4; // the focus tick — a duty state, never an outline
     }
     void picked;
+    // THE SELECT LAMP. Unlit socket ring = available; filled = this is your ticket.
+    // A row that can be pressed has to look like it can be pressed.
+    const ly = y + 2;
+    f.run(R.lampX, ly, 4, 'h', ink, isMine ? 4 : 2).run(R.lampX, ly + 3, 4, 'h', ink, isMine ? 4 : 2);
+    f.run(R.lampX, ly, 4, 'v', ink, isMine ? 4 : 2).run(R.lampX + 3, ly, 4, 'v', ink, isMine ? 4 : 2);
+    if (isMine || (s.phase === 'idle' && s.hover === i)) {
+      f.lamp(R.lampX + 1, ly + 1, ink, 4).lamp(R.lampX + 2, ly + 1, ink, 4);
+      f.lamp(R.lampX + 1, ly + 2, ink, 4).lamp(R.lampX + 2, ly + 2, ink, 4);
+    }
     f.text(R.nameX, y, name, ink, duty);
     const cnt = `${fmtCount(row.count)} OF ${fmtCount(row.total)}`;
     f.text(R.countRight - Field.textWidth(cnt), y, cnt, ink, Math.max(1, duty - 1));
@@ -182,16 +197,20 @@ export function composeFrame(s: FrameState): Field {
   // ---- controls band + the permanent rules line (ui.md §5.6) ----
   if (s.phase === 'settled' && s.result) {
     const verdict = s.result.won ? 'PAID' : 'NO PAY';
-    f.text(R.nameX, R.ctrlY, verdict, s.result.won ? 'green' : 'red', 4);
-    const again = 'CLICK TO DEAL AGAIN';
+    f.text(R.lampX, R.ctrlY, verdict, s.result.won ? 'green' : 'red', 4);
+    const again = 'CLICK ANYWHERE TO DEAL AGAIN';
     f.text(R.payRight - Field.textWidth(again), R.ctrlY, again, 'amber', 2);
+  } else if (s.phase === 'idle') {
+    // An instruction, so it reads as one: an arrow into the list, not a floating label.
+    const pick = 'PICK A ROW ABOVE TO BET';
+    f.text(R.payRight - Field.textWidth(pick), R.ctrlY, pick, 'amber', 2);
   } else {
-    // TURBO is a real focusable DOM button (see App.tsx) laid over this band, so the
-    // lamp layer must not print the word twice — the first pass overlapped them.
-    const pass = s.phase === 'idle' ? 'PICK A TICKET' : 'WAITING';
-    f.text(R.payRight - Field.textWidth(pass), R.ctrlY, pass, 'amber', 2);
+    const wait = 'WALKING THE 13 POINTS';
+    f.text(R.payRight - Field.textWidth(wait), R.ctrlY, wait, 'amber', 2);
   }
-  f.text(R.nameX, R.rulesY, 'EV IS THE SAME ON EVERY TICKET.', 'amber', 2);
+  // The rules line is a FACT about the paytable, not an instruction — it sits at the
+  // bottom edge, a duty down, so it cannot be mistaken for something to act on.
+  f.text(R.lampX, R.rulesY, 'SAME EXPECTED RETURN ON EVERY TICKET', 'amber', 2);
 
   return f;
 }

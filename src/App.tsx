@@ -256,21 +256,24 @@ export function App() {
       )}
       {/* ui.md §2.6 exception 2 of 3: the meta readout is mono type, never lamps. */}
       {!boot && <p className="meta">RTP 97% · MAX 96.03× · ENTROPY SEEDED KECCAK</p>}
+      {/* The one line that says what this IS. A player who reads nothing else should
+          still understand the inversion: the result is already public, the route is not. */}
+      {!boot && <p className="pitch">THE SCORE IS FINAL · BET ON HOW IT HAPPENED</p>}
       {/* The settled controls band belongs to the lamp layer (NO PAY / CLICK TO DEAL
           AGAIN), so the DOM button stands down rather than printing over it. */}
       {!boot && st.phase !== 'settled' && (
-        <>
-          <button className="turbo" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
-            TURBO {turbo ? 'ON' : 'OFF'}
+        <div className="controls">
+          <button className="btn" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
+            <span className="lamp" aria-hidden="true" />TURBO
           </button>
           <button
-            className="snd"
+            className="btn"
             aria-pressed={sound}
-            onClick={() => { const on = voices.current!.toggle(); setSound(on); if (on) sfx.boot(voices.current!); }}
+            onClick={() => { const on = voices.current!.toggle(); setSound(on); if (on) { sfx.boot(voices.current!); voices.current!.startHum(); } else voices.current!.stopHum(); }}
           >
-            SOUND {sound ? 'ON' : 'OFF'}
+            <span className="lamp" aria-hidden="true" />SOUND
           </button>
-        </>
+        </div>
       )}
       {!boot && !isEmbedded() && <p className="demo">DEMO · PLAY MONEY</p>}
       <div className="crt" />
