@@ -14,21 +14,7 @@
 import { describe, expect, it } from 'vitest';
 import { binom, c13, ROW13, skip, take } from '../src/game/pascal';
 import { drawRank, unrank, walk } from '../src/game/unrank';
-import {
-  BOARDS,
-  boardMenu,
-  cmpFrac,
-  eqFrac,
-  frac,
-  fullMenu,
-  FLOOR,
-  mulFrac,
-  neverBehindCount,
-  RTP,
-  struckFirstCount,
-  toNumber,
-  trailedCount,
-} from '../src/game/menu';
+import { BOARDS, boardMenu, cmpFrac, eqFrac, frac, fullMenu, FLOOR, mulFrac, neverBehindCount, RTP, struckFirstCount, toNumber, trailedCount, formatFraction, formatPayout } from '../src/game/menu';
 
 /** Number of set bits — used only to check `unrank`'s invariant, never shipped. */
 function popcount(mask: number): number {
@@ -392,5 +378,63 @@ describe('menu.ts — heavy-tail path', () => {
     expect(overMult).toBe(false); // 96.03x <= 100x
     expect(underProb).toBe(false); // 1.010% >= 0.1%
     expect(overMult && underProb).toBe(false); // heavy-tail path not triggered
+  });
+});
+
+describe('formatFraction — exact half-up rounding, never through a float', () => {
+  it('rounds 3201/200 (= 16.005) UP to 16.01, where toFixed(2) gives 16.00', () => {
+    const threeDown = boardMenu(5).find(r => r.prop === 'THREE DOWN')!;
+    expect(threeDown.payout).toEqual(frac(3201, 200));
+    expect(formatFraction(threeDown.payout, 2)).toBe('16.01');
+    // the float path this replaced, pinned so the regression is visible:
+    expect(toNumber(threeDown.payout).toFixed(2)).toBe('16.00');
+  });
+
+  it('renders the tail ticket as 96.03, never 96.0', () => {
+    const fourDown = boardMenu(5).find(r => r.prop === 'FOUR DOWN')!;
+    expect(formatPayout(fourDown)).toBe('96.03×');
+  });
+
+  it('rounds 873/200 (= 4.365) half-up to 4.37', () => {
+    expect(formatFraction(frac(873, 200), 2)).toBe('4.37');
+  });
+
+  it('pads the fractional part and honours dp=0 and negatives', () => {
+    expect(formatFraction(frac(1, 100), 2)).toBe('0.01');
+    expect(formatFraction(frac(5, 1), 2)).toBe('5.00');
+    expect(formatFraction(frac(5, 2), 0)).toBe('3');
+    expect(formatFraction(frac(-3201, 200), 2)).toBe('-16.01');
+  });
+
+  it('formats every one of the 25 shipped rows without a float round-trip', () => {
+    for (const r of fullMenu()) {
+      const s = formatPayout(r);
+      expect(s).toMatch(/^\d+\.\d{2}×$/);
+    }
+  });
+});
+
+describe('frac sign normalisation — the invariant every formatter assumes', () => {
+  it('carries the sign on the numerator, never the denominator', () => {
+    for (const [n, d] of [[-3201, 200], [3201, -200], [-3201, -200], [-1, 3], [1, -3]] as const) {
+      const f = frac(n, d);
+      expect(f.den > 0n).toBe(true);
+      expect(f.den).toBeGreaterThan(0n);
+    }
+  });
+
+  it('reduces negatives to lowest terms', () => {
+    expect(frac(-6, 4)).toEqual({ num: -3n, den: 2n });
+    expect(frac(6, -4)).toEqual({ num: -3n, den: 2n });
+    expect(frac(-6, -4)).toEqual({ num: 3n, den: 2n });
+  });
+
+  it('mulFrac keeps the invariant through a sign change', () => {
+    expect(mulFrac(frac(-1, 2), frac(1, 3))).toEqual({ num: -1n, den: 6n });
+    expect(mulFrac(frac(-1, 2), frac(-1, 3))).toEqual({ num: 1n, den: 6n });
+  });
+
+  it('throws on a zero denominator rather than returning a broken rational', () => {
+    expect(() => frac(1, 0)).toThrow();
   });
 });

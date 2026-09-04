@@ -1,0 +1,59 @@
+/* The single global overlay. ui.md §8.4 caps every value here BEFORE polish week,
+   because scanlines + aberration is the most downloaded retro preset on the internet
+   and, cranked, it reads as a filter rather than a decision. */
+:root {
+  --void: #05060B;
+  --bezel: #232C38;
+  --amber-4: #FFA51E;
+  --amber-3: #D07F14;
+  --crt-scanline-opacity: 0.14;
+  --crt-vignette: 0.35;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  background: var(--void);
+  color: var(--amber-4);
+  /* no UI font by design (ui.md §2.6) — the mono layer is the only text layer */
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  overflow: hidden;
+}
+.cabinet {
+  position: relative; width: 100%; height: 100%;
+  display: grid; place-items: center;
+  background: var(--void);
+}
+.board { display: block; width: 100%; height: 100%; }
+
+/* scanlines + vignette, composited once over the whole cabinet. Never load-bearing:
+   the seam test (gate G6) is that the frame still reads with this layer removed. */
+.crt {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0 1px, transparent 1px 3px);
+  opacity: var(--crt-scanline-opacity);
+}
+.vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,var(--crt-vignette)) 100%);
+}
+/* The DOM copy: how the rules line reaches a screen reader and a phone (ui.md §8.5).
+   Visually hidden, never display:none — it must stay in the accessibility tree. */
+.sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* ui.md §2.6 exception 2 of 3. The meta readout is the honesty surface — declared RTP,
+   max multiplier, entropy source — and it is mono type because it carries characters
+   ('%') that the 45-glyph lamp set deliberately does not contain. */
+.meta {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  top: 25.5%;
+  font-size: clamp(8px, 0.95vw, 13px);
+  color: var(--amber-3);
+  white-space: nowrap;
+  pointer-events: none;
+}

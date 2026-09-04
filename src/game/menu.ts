@@ -33,30 +33,42 @@ export interface Fraction {
   readonly den: bigint;
 }
 
-// Every `Fraction` this module ever constructs has a positive numerator and denominator
-// (counts, totals and RTP are all positive integers) — so the Euclidean algorithm never
-// needs to handle a negative operand. No abs() branch to leave untested.
+// The Euclidean algorithm on ABSOLUTE values. This abs() was once deleted as
+// "unreachable — every Fraction here is built from positive counts", which is true of
+// this module's own call sites and false of the exported API: BigInt `%` keeps the sign
+// of its dividend, so gcd(-3201n, 200n) returns -1n and frac() then yields
+// {num: 3201n, den: -200n} — a NEGATIVE DENOMINATOR that silently breaks every
+// comparison and formatter downstream. Reachability is a property of the API, not of
+// today's callers.
+// A function DECLARATION, not a const arrow: `RTP` calls frac() at module-evaluation
+// time, which reaches gcd before a const would be initialised (temporal dead zone).
+function abs(v: bigint): bigint { return v < 0n ? -v : v; }
+
 function gcd(a: bigint, b: bigint): bigint {
+  a = abs(a); b = abs(b);
   while (b) {
     [a, b] = [b, a % b];
   }
   return a;
 }
 
+/** Normalise to lowest terms with the sign carried by the NUMERATOR, never the
+ *  denominator — the invariant every other function in this module assumes. */
+function norm(n: bigint, d: bigint): Fraction {
+  if (d === 0n) throw new Error('Fraction with zero denominator');
+  const g = gcd(n, d);
+  const sign = d < 0n ? -1n : 1n;
+  return { num: (n / g) * sign, den: (d / g) * sign };
+}
+
 /** An exact rational, always returned in lowest terms. */
 export function frac(num: number, den: number): Fraction {
-  const n = BigInt(num);
-  const d = BigInt(den);
-  const g = gcd(n, d);
-  return { num: n / g, den: d / g };
+  return norm(BigInt(num), BigInt(den));
 }
 
 /** Exact fraction multiplication, reduced. */
 export function mulFrac(a: Fraction, b: Fraction): Fraction {
-  const num = a.num * b.num;
-  const den = a.den * b.den;
-  const g = gcd(num, den);
-  return { num: num / g, den: den / g };
+  return norm(a.num * b.num, a.den * b.den);
 }
 
 /** Structural equality — safe because every `Fraction` this module produces is kept reduced. */
@@ -136,4 +148,29 @@ export function boardMenu(l: number): MenuRow[] {
  *  10-3, 11-2 — descending `l`, matching `BOARDS`). */
 export function fullMenu(): MenuRow[] {
   return BOARDS.flatMap(boardMenu);
+}
+
+/**
+ * Format an exact Fraction at `dp` decimal places with HALF-UP rounding.
+ *
+ * Never route a payout through `toNumber()` and `Number.toFixed()`. `THREE DOWN` on the
+ * 8-5 board is exactly 3201/200 = 16.005, whose IEEE-754 double is a hair BELOW 16.005,
+ * so `toFixed(2)` returns "16.00" and the screen contradicts the paytable. The whole
+ * pitch is that these numbers are exact integers you can count; rounding them through a
+ * float is the one place that claim can quietly become false.
+ */
+export function formatFraction(f: Fraction, dp = 2): string {
+  const scale = 10n ** BigInt(dp);
+  const neg = f.num < 0n;
+  const num = neg ? -f.num : f.num;
+  // half-up: floor((num*scale*2 + den) / (den*2))
+  const scaled = (num * scale * 2n + f.den) / (f.den * 2n);
+  const whole = scaled / scale, frac = scaled % scale;
+  const body = dp === 0 ? `${whole}` : `${whole}.${frac.toString().padStart(dp, '0')}`;
+  return neg ? `-${body}` : body;
+}
+
+/** The payout exactly as it must appear on the board: `96.03×`, never `96.0×`. */
+export function formatPayout(r: MenuRow): string {
+  return `${formatFraction(r.payout, 2)}×`;
 }
