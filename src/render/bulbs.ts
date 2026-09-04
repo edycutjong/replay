@@ -204,22 +204,48 @@ export function makeSprites(geo: Geometry): Sprites {
 const px = (g: Geometry, c: number) => g.x0 + c * g.pitch + g.pitch / 2;
 const py = (g: Geometry, r: number) => g.y0 + r * g.pitch + g.pitch / 2;
 
+/** Reused across frames. A fresh Float32Array for a 2560x1600 canvas is 47MB, and
+ *  allocating one per frame is pure garbage-collector pressure during the replay. */
+let accCache: Float32Array | null = null;
+
+export interface Region { x: number; y: number; w: number; h: number }
+
 /**
  * Composites additively into a float buffer and clamps PROPORTIONALLY.
  * `globalCompositeOperation='lighter'` clamps per channel, which saturates R and G
  * together and slides stacked amber halos to pure yellow — a measured, shipped bug
  * in the asset suite's v1. A proportional clamp keeps the hue of a sum of ambers
  * inside the amber ramp's own window.
+ *
+ * `region` (DEVICE pixels) restricts the read-modify-write to a sub-rectangle. Redrawing
+ * the whole 4.1M-pixel canvas per beat cost ~80ms — about 12fps, which is what "not
+ * smooth" looks like. During the replay only the chart band changes, so only the chart
+ * band is recomputed.
  */
-export function renderCanvas(field: Field, ctx: CanvasRenderingContext2D, geo: Geometry, sprites: Sprites): void {
-  const W = ctx.canvas.width, H = ctx.canvas.height;
-  const base = ctx.getImageData(0, 0, W, H), bd = base.data;
-  const acc = new Float32Array(W * H * 3), S = sprites.S;
+export function renderCanvas(
+  field: Field,
+  ctx: CanvasRenderingContext2D,
+  geo: Geometry,
+  sprites: Sprites,
+  region?: Region,
+): void {
+  const rx = region ? Math.max(0, region.x) : 0;
+  const ry = region ? Math.max(0, region.y) : 0;
+  const W = region ? Math.min(region.w, ctx.canvas.width - rx) : ctx.canvas.width;
+  const H = region ? Math.min(region.h, ctx.canvas.height - ry) : ctx.canvas.height;
+  if (W <= 0 || H <= 0) return;
+  const base = ctx.getImageData(rx, ry, W, H), bd = base.data;
+  const need = W * H * 3;
+  if (!accCache || accCache.length < need) accCache = new Float32Array(need);
+  const acc = accCache;
+  acc.fill(0, 0, need);
+  const S = sprites.S;
 
   for (const l of field.list()) {
     const img = sprites.data[l.ink + l.duty];
     if (!img) continue;
-    const ox = Math.round(px(geo, l.c) - sprites.R), oy = Math.round(py(geo, l.r) - sprites.R);
+    const ox = Math.round(px(geo, l.c) - sprites.R) - rx, oy = Math.round(py(geo, l.r) - sprites.R) - ry;
+    if (ox + S < 0 || oy + S < 0 || ox >= W || oy >= H) continue; // outside the dirty region
     for (let y = 0; y < S; y++) {
       const ty = oy + y;
       if (ty < 0 || ty >= H) continue;
@@ -235,11 +261,21 @@ export function renderCanvas(field: Field, ctx: CanvasRenderingContext2D, geo: G
     }
   }
 
-  for (let p = 0, q = 0; q < acc.length; p += 4, q += 3) {
+  for (let p = 0, q = 0; q < need; p += 4, q += 3) {
     let r = bd[p] + acc[q], g = bd[p + 1] + acc[q + 1], b = bd[p + 2] + acc[q + 2];
     const m = Math.max(r, g, b);
     if (m > 255) { const k = 255 / m; r *= k; g *= k; b *= k; } // proportional: hue survives
     bd[p] = r; bd[p + 1] = g; bd[p + 2] = b;
   }
-  ctx.putImageData(base, 0, 0);
+  ctx.putImageData(base, rx, ry);
 }
+
+/** Lamp-space rectangle -> device-pixel region, padded by the sprite radius so a lamp's
+ *  bloom is never clipped at the seam. */
+export function lampRegion(geo: Geometry, sprites: Sprites, c0: number, r0: number, c1: number, r1: number): Region {
+  const pad = sprites.R + 2;
+  const x = Math.floor(geo.x0 + c0 * geo.pitch) - pad;
+  const y = Math.floor(geo.y0 + r0 * geo.pitch) - pad;
+  return { x, y, w: Math.ceil((c1 - c0 + 1) * geo.pitch) + pad * 2, h: Math.ceil((r1 - r0 + 1) * geo.pitch) + pad * 2 };
+}
+export type { Sprites };

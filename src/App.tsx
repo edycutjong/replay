@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { geometry, makeSprites, renderCanvas, type Geometry } from './render/bulbs';
-import { composeFrame, rowRect, rowIndexForProp, WIDE_COLS, WIDE_ROWS, type FrameState } from './render/coldOpen';
+import { geometry, makeSprites, renderCanvas, lampRegion, type Geometry } from './render/bulbs';
+import { composeStatic, composeChart, CHART_BAND, rowRect, rowIndexForProp, WIDE_COLS, WIDE_ROWS, type FrameState } from './render/coldOpen';
 import { boardMenu, formatPayout } from './game/menu';
 import { beatTempo, TURBO_BEAT_MS } from './game/tempo';
 import { curve } from './render/replay';
@@ -24,23 +24,45 @@ export function App() {
   });
 
   // ---- render -------------------------------------------------------------------
+  // Two layers. The static layer (bezel, score, menu, controls) is rendered once per
+  // state change into an offscreen canvas; a beat blits that back and recomputes ONLY
+  // the chart band. Redrawing all 4.1M device pixels per beat cost ~80ms — 12fps, which
+  // is exactly what "not smooth" looks like.
+  const staticKey = `${st.l}|${st.winnerSide}|${st.phase}|${st.propId}|${st.hover}|${st.result?.won}|${st.result?.pathId}`;
+  const lastStaticKey = useRef('');
+  const baseRef = useRef<HTMLCanvasElement | null>(null);
+
   useEffect(() => {
     const c = cv.current;
     if (!c) return;
-    const ctx = c.getContext('2d');
+    const ctx = c.getContext('2d', { alpha: false });
     if (!ctx) return;
     const dpr = window.devicePixelRatio || 1;
-    const need = Math.round(c.clientWidth * dpr) !== c.width || Math.round(c.clientHeight * dpr) !== c.height;
-    if (need || !geoRef.current) {
+    const resized = Math.round(c.clientWidth * dpr) !== c.width || Math.round(c.clientHeight * dpr) !== c.height;
+    if (resized || !geoRef.current) {
       c.width = Math.round(c.clientWidth * dpr);
       c.height = Math.round(c.clientHeight * dpr);
       geoRef.current = geometry(c.clientWidth, c.clientHeight, WIDE_COLS, WIDE_ROWS, dpr);
       spritesRef.current = makeSprites(geoRef.current);
+      baseRef.current = document.createElement('canvas');
+      baseRef.current.width = c.width; baseRef.current.height = c.height;
+      lastStaticKey.current = '';
     }
-    ctx.fillStyle = '#05060B';
-    ctx.fillRect(0, 0, c.width, c.height);
-    renderCanvas(composeFrame(st), ctx, geoRef.current, spritesRef.current!);
-  }, [st]);
+    const geo = geoRef.current, sprites = spritesRef.current!;
+    const base = baseRef.current!;
+
+    if (lastStaticKey.current !== staticKey) {
+      const bctx = base.getContext('2d', { alpha: false })!;
+      bctx.fillStyle = '#05060B';
+      bctx.fillRect(0, 0, base.width, base.height);
+      renderCanvas(composeStatic(st), bctx, geo, sprites);
+      lastStaticKey.current = staticKey;
+    }
+
+    const region = lampRegion(geo, sprites, CHART_BAND.c0, CHART_BAND.r0, CHART_BAND.c1, CHART_BAND.r1);
+    ctx.drawImage(base, 0, 0);                                  // cheap GPU blit
+    renderCanvas(composeChart(st), ctx, geo, sprites, region);   // ~13x fewer pixels
+  }, [st, staticKey]);
 
   useEffect(() => {
     const onResize = (): void => { geoRef.current = null; setSt(s => ({ ...s })); };

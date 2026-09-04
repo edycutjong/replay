@@ -55,6 +55,33 @@ export function rowRect(i: number): { y0: number; y1: number; x0: number; x1: nu
   return { y0: y - 1, y1: y + 8, x0: R.nameX - 2, x1: R.payRight + 2 };
 }
 
+/** The chart band, in lamp space — the only region that changes during a replay. */
+export const CHART_BAND = { c0: 1, r0: R.chartY - 2, c1: WIDE_COLS - 2, r1: R.chartY + R.chartH + 2 };
+
+/** Everything that does NOT change between beats: bezel, score, menu head, rows,
+ *  controls, rules line. Rendered once per state change and cached as a bitmap, so a
+ *  beat only recomputes the chart band instead of all 4.1M device pixels. */
+export function composeStatic(s: FrameState): Field {
+  const f = composeFrame(s);
+  const out = new Field(WIDE_COLS, WIDE_ROWS);
+  for (const l of f.list()) {
+    if (l.r >= CHART_BAND.r0 && l.r <= CHART_BAND.r1) continue;
+    out.lamp(l.c, l.r, l.ink, l.duty);
+  }
+  return out;
+}
+
+/** Only the chart band — the walk, the fence, the envelope. */
+export function composeChart(s: FrameState): Field {
+  const f = composeFrame(s);
+  const out = new Field(WIDE_COLS, WIDE_ROWS);
+  for (const l of f.list()) {
+    if (l.r < CHART_BAND.r0 || l.r > CHART_BAND.r1) continue;
+    out.lamp(l.c, l.r, l.ink, l.duty);
+  }
+  return out;
+}
+
 export function composeFrame(s: FrameState): Field {
   const f = new Field(WIDE_COLS, WIDE_ROWS);
   const w = 13 - s.l;
