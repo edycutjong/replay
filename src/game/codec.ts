@@ -39,3 +39,30 @@ export function propWon(propId: PropId, maxDeficit: number, struckFirst: boolean
   if (propId === 1) return maxDeficit === 0;
   return maxDeficit >= propId - 1;
 }
+
+/**
+ * Decode the contract's `gameState` — the single source of truth for the animation.
+ * abi.encode(uint8 l, uint8 propId, uint16 pathId, uint16 mask, uint8 maxDeficit,
+ *            bool struckFirst, bool won), i.e. seven 32-byte words.
+ */
+export function decodeGameState(hex: string): GameState | null {
+  const body = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (body.length < 7 * 64) return null;
+  const word = (i: number): bigint => BigInt(`0x${body.slice(i * 64, (i + 1) * 64)}`);
+  try {
+    const l = Number(word(0));
+    const propId = Number(word(1)) as PropId;
+    if (l < 2 || l > 6 || propId < 0 || propId > 5) return null;
+    return {
+      l,
+      propId,
+      pathId: Number(word(2)),
+      mask: Number(word(3)),
+      maxDeficit: Number(word(4)),
+      struckFirst: word(5) !== 0n,
+      won: word(6) !== 0n,
+    };
+  } catch {
+    return null;
+  }
+}
