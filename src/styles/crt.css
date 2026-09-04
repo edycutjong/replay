@@ -115,3 +115,41 @@ body {
   color: var(--amber-3); white-space: nowrap; pointer-events: none;
 }
 @media (max-width: 900px) { .pitch { display: none; } }
+
+/* HOW IT WORKS. Opened by a button and never by itself — ui.md §9.3 bans a splash and a
+   tutorial because "no manual needed" is a quarter of the score. A player who wants the
+   rules can have them; a player who does not never sees this. */
+.help {
+  position: absolute; inset: 6% 8%; overflow-y: auto; z-index: 20;
+  background: #05060BF2; border: 2px solid var(--bezel);
+  padding: clamp(16px, 2.4vw, 34px);
+  color: var(--amber-3); font-size: clamp(11px, 1.05vw, 15px); line-height: 1.65;
+  letter-spacing: 0.04em;
+}
+.help h2 {
+  color: var(--amber-4); font-size: clamp(12px, 1.15vw, 16px);
+  letter-spacing: 0.14em; margin: 18px 0 6px;
+}
+.help h2:first-of-type { margin-top: 0; }
+.help p { margin: 0 0 10px; max-width: 68ch; }
+.help b { color: var(--amber-4); font-weight: 500; }
+.help i { color: var(--amber-4); font-style: normal; text-decoration: underline; }
+.help ul { list-style: none; margin: 4px 0 10px; padding: 0; }
+.help li {
+  display: grid; grid-template-columns: 15em 1fr auto; gap: 10px;
+  padding: 5px 0; border-bottom: 1px solid var(--border-subtle); align-items: baseline;
+}
+.help li b { color: var(--amber-4); }
+.help li em { font-style: normal; color: var(--amber-2); white-space: nowrap; }
+.help .fine { color: var(--amber-2); margin-top: 14px; }
+.helpClose {
+  float: right; font: inherit; font-size: inherit; letter-spacing: 0.14em;
+  background: #0A0C13; color: var(--amber-3);
+  border: 2px solid var(--bezel); padding: 4px 10px; cursor: pointer;
+}
+.helpClose:hover { color: var(--amber-4); }
+.helpClose:focus-visible { outline: 2px solid var(--amber-4); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .help { inset: 3% 4%; }
+  .help li { grid-template-columns: 1fr; gap: 2px; }
+}

@@ -9,6 +9,16 @@ import { dealBoard, settleLocally, isEmbedded } from './bridge/demoHost';
 import { composeWordmark, BOOT_MS } from './render/boot';
 import { Voices } from './audio/voices';
 import { sfx } from './audio/bindings';
+
+/** One sentence per prop, in the player's words rather than the paytable's. */
+const PROP_HELP: Record<string, string> = {
+  'STRUCK FIRST': 'the side that LOST the game scored the very first point',
+  'NEVER BEHIND': 'the winner led or was level the whole way — never once behind',
+  'CAME BACK': 'the winner was behind at some point and still won',
+  'TWO DOWN': 'the winner was 2 or more points behind at some point',
+  'THREE DOWN': 'the winner was 3 or more points behind at some point',
+  'FOUR DOWN': 'the winner was 4 or more points behind — the deepest hole on this board',
+};
 import { WORDMARK_PATHS, WORDMARK_ADV, WORDMARK_CAP, WORDMARK_LAMPS } from './render/wordmark';
 import './styles/crt.css';
 
@@ -26,6 +36,7 @@ export function App() {
   const [sound, setSound] = useState(() => voices.current!.enabled);
   const [turbo, setTurbo] = useState(false);
   const [boot, setBoot] = useState(true);
+  const [help, setHelp] = useState(false);
   const [markBox, setMarkBox] = useState<{ l: number; t: number; w: number; h: number } | null>(null);
   const [st, setSt] = useState<FrameState>({
     ...FIRST, phase: 'idle', propId: null, hover: null, result: null,
@@ -266,6 +277,9 @@ export function App() {
           <button className="btn" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
             <span className="lamp" aria-hidden="true" />TURBO
           </button>
+          <button className="btn" onClick={() => setHelp(h => !h)} aria-pressed={help} aria-expanded={help}>
+            <span className="lamp" aria-hidden="true" />HOW IT WORKS
+          </button>
           <button
             className="btn"
             aria-pressed={sound}
@@ -276,6 +290,50 @@ export function App() {
         </div>
       )}
       {!boot && !isEmbedded() && <p className="demo">DEMO · PLAY MONEY</p>}
+      {help && (
+        /* ui.md §9.3 bans a splash, a modal on load and a tutorial, because Simplicity is
+           25% and reads "no manual needed" — so this NEVER opens by itself. It is a
+           button, for the player who wants it, and the cold open is still zero clicks. */
+        <div className="help" role="dialog" aria-label="How Replay works">
+          <button className="helpClose" onClick={() => setHelp(false)} aria-label="Close">CLOSE ×</button>
+          <h2>THE SCORE IS ALREADY FINAL.</h2>
+          <p>
+            A 13-point game ended <b>{st.winnerSide === 'HOME' ? 'HOME' : 'AWAY'} {13 - st.l} —{' '}
+            {st.winnerSide === 'HOME' ? 'AWAY' : 'HOME'} {st.l}</b>. That result is on the board
+            before you bet a cent. Every other casino game hides the outcome and shows you the odds.
+            This one shows you the outcome and sells you the <b>route</b>.
+          </p>
+          <h2>{rows[0].total.toLocaleString()} ROUTES END THAT WAY.</h2>
+          <p>
+            The loser took {st.l} of the 13 points. <i>Which</i> {st.l} of them decides the entire
+            play-by-play — every lead, every comeback. There are exactly C(13,{st.l}) ={' '}
+            {rows[0].total.toLocaleString()} ways to choose them, and each one is a different game
+            that ends on the same scoreline.
+          </p>
+          <h2>YOU BET ON WHAT KIND OF ROUTE IT WAS.</h2>
+          <ul>
+            {rows.map(r => (
+              <li key={r.prop}>
+                <b>{r.prop === 'STRUCK FIRST' ? `${st.winnerSide === 'HOME' ? 'AWAY' : 'HOME'} STRUCK FIRST` : r.prop}</b>
+                <span>{PROP_HELP[r.prop]}</span>
+                <em>{r.count.toLocaleString()} of {r.total.toLocaleString()} · {formatPayout(r)}</em>
+              </li>
+            ))}
+          </ul>
+          <h2>EVERY TICKET IS PRICED THE SAME WAY.</h2>
+          <p>
+            Each price is an exact count divided by the total — no estimate, no simulation. Payout is
+            <b> 0.97 ÷ probability</b>, so probability × payout = 0.97 on <i>every</i> row. The safe
+            1.75× and the wild 96.03× have identical expected value. There is no trap bet here, and
+            you can check the whole paytable by hand.
+          </p>
+          <p className="fine">
+            Then the 13 points replay one at a time, and you watch whether the line ever reaches
+            your row. Turn SOUND on: the winner's point and the loser's point are different pitches,
+            so you can hear a comeback without looking.
+          </p>
+        </div>
+      )}
       <div className="crt" />
       <div className="vignette" />
       <p className="sr">
