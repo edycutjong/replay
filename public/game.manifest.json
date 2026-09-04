@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "apiVersion": 1,
+  "gameId": "ReplayGame",
+  "defaultLocale": "en",
+  "locales": {
+    "en": {
+      "name": "Replay",
+      "description": "The final score is revealed before you bet. Wager on which ordering of the 13 points produced it — every price is an exact count over equally likely orderings."
+    }
+  },
+  "presentation": {
+    "mode": "full-iframe",
+    "hostPanels": { "openSession": false, "history": false, "status": false }
+  },
+  "capabilities": {
+    "openSession": true,
+    "submitAction": false,
+    "forfeitExpiredSession": false,
+    "cancelStuckRandomness": false,
+    "resize": true
+  }
+}

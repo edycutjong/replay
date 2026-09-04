@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@chain/casino-sdk": ["./src/vendor/casino-sdk/index.ts"],
+      "@chain/casino-sdk/guest": ["./src/vendor/casino-sdk/guest.ts"],
+      "@chain/casino-sdk/host": ["./src/vendor/casino-sdk/host.ts"]
+    }
+  },
+  "include": ["src", "scripts", "test", "vite.config.ts"]
+}
