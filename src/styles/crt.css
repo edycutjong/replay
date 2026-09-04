@@ -57,3 +57,19 @@ body {
   white-space: nowrap;
   pointer-events: none;
 }
+
+/* Controls. Interactive states are DUTY steps, not overlays — a row's multiplier is not
+   bigger than its name, it is brighter (ui.md §2.2). These two DOM controls are the
+   exception the canvas cannot own: a real button, focusable and hit-testable. */
+.turbo, .demo {
+  position: absolute; font: inherit; font-size: clamp(7px, 0.72vw, 10px);
+  letter-spacing: 0.14em; background: none; border: 0; padding: 2px 4px;
+}
+.turbo {
+  left: 3.2%; bottom: 11.2%; color: var(--amber-3); cursor: pointer;
+  /* sits in the controls band the lamp layer deliberately leaves empty */
+}
+.turbo:hover, .turbo:focus-visible { color: var(--amber-4); outline: none; }
+.turbo[aria-pressed='true'] { color: #3DFF6E; }
+/* ui.md §2.6 exception 3 of 3 — the DEMO badge. Standalone mode is play money and says so. */
+.demo { right: 3.2%; top: 3%; color: var(--amber-2); pointer-events: none; }
