@@ -22,21 +22,33 @@ export function curve(mask: number): number[] {
  * direction carries which side scored, and pitch carries it in the ear, so a second path
  * colour would spend an ink on information already encoded twice (ui.md §6.4).
  */
+/**
+ * The row a running differential sits on.
+ *
+ * The band is anchored to the board's RANGE, not to the zero line. A differential runs
+ * from -l to +w, and w + l is always 13, so every board spans exactly 13 units and one
+ * rowStep fits them all. Centring on zero instead made the envelope overflow the band
+ * upward — +8 on the 8-5 board and +11 on 11-2, against a half-height of 15 — which is
+ * how the wedge ended up drawn through the meta readout.
+ */
+export function rowForDiff(d: number, w: number, chartY: number): number {
+  return chartY + (w - d) * CHART_ROWSTEP;
+}
+
 export function drawWalk(
   f: Field,
   mask: number,
   beat: number,
   chartY: number,
-  chartH: number,
+  w: number,
   opts: { headHot?: boolean; ink?: Ink; ghost?: boolean } = {},
 ): void {
-  const mid = chartY + Math.round(chartH / 2);
   const pts = curve(mask);
   const ink: Ink = opts.ghost ? 'red' : (opts.ink ?? 'amber');
-  let prevX = CHART_X, prevY = mid;
+  let prevX = CHART_X, prevY = rowForDiff(0, w, chartY);
   for (let i = 0; i < Math.min(beat, 13); i++) {
     const x = CHART_X + (i + 1) * CHART_COLSTEP;
-    const y = mid - pts[i] * CHART_ROWSTEP;
+    const y = rowForDiff(pts[i], w, chartY);
     const isHead = i === beat - 1;
     // the connecting run — every line in this product is a run of lit bulbs (§2.4).
     // Walk the diagonal so the curve reads as one continuous stroke, not a dot per point.

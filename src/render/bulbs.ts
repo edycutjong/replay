@@ -162,11 +162,28 @@ export function geometry(W: number, H: number, cols: number, rows: number, dpr =
   return {
     pitch,
     dia: pitch * 0.62,
-    bloom: pitch < 5 ? 1.6 : 3.0, // ui.md §4.4 density floor, read on OUTPUT pixels
+    bloom: bloomFor(pitch),
     x0: Math.round((W * dpr - bw) / 2),
     y0: Math.round((H * dpr - bh) / 2),
     w: bw, h: bh,
   };
+}
+
+/**
+ * ui.md §4.4, all THREE bands — evaluated on the pitch in the OUTPUT image, not in CSS
+ * pixels. The asset pipeline's _bulb.js documents this rule in its own header and then
+ * implements only two of the bands (`pitch < 5 ? 1.6 : 3.0`), so the top band was never
+ * applied anywhere. A typical desktop at 2x lands on pitch 10, i.e. squarely in it: the
+ * game was drawing an 18.6px halo around a 6.2px bulb, which is why glyphs read as soft
+ * rather than as discrete lamps.
+ *
+ * Dense boards need a small halo or the lamps merge; sparse, large-pitch boards need a
+ * small halo for the opposite reason — at 10px per lamp a 3.0 ratio is pure smear.
+ */
+export function bloomFor(pitch: number): number {
+  if (pitch < 5) return 1.6;  // density floor — lamps would otherwise merge
+  if (pitch > 8) return 2.0;  // large pitch — 3.0 here is smear, not bloom
+  return 3.0;
 }
 
 const hexa = (hex: string, a: number): string => {

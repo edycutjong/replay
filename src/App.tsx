@@ -177,9 +177,13 @@ export function App() {
       />
       {/* ui.md §2.6 exception 2 of 3: the meta readout is mono type, never lamps. */}
       <p className="meta">RTP 97% · MAX 96.03× · ENTROPY SEEDED KECCAK</p>
-      <button className="turbo" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
-        TURBO {turbo ? 'ON' : 'OFF'}
-      </button>
+      {/* The settled controls band belongs to the lamp layer (NO PAY / CLICK TO DEAL
+          AGAIN), so the DOM button stands down rather than printing over it. */}
+      {st.phase !== 'settled' && (
+        <button className="turbo" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
+          TURBO {turbo ? 'ON' : 'OFF'}
+        </button>
+      )}
       {!isEmbedded() && <p className="demo">DEMO · PLAY MONEY</p>}
       <div className="crt" />
       <div className="vignette" />

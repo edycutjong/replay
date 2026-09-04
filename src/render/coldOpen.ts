@@ -9,7 +9,7 @@
 import { Field } from './bulbs';
 import { boardMenu, formatPayout } from '../game/menu';
 import { formatPathId, ticketRow, type GameState, type PropId } from '../game/codec';
-import { drawWalk, curve, CHART_X, CHART_COLSTEP, CHART_ROWSTEP } from './replay';
+import { drawWalk, curve, rowForDiff, CHART_X, CHART_COLSTEP, CHART_ROWSTEP } from './replay';
 
 export const WIDE_COLS = 256, WIDE_ROWS = 152;
 
@@ -17,7 +17,7 @@ export const R = {
   scoreY: 4,
   // The chart is the reveal, and the reveal is the product. It gets 30 rows, which at
   // rowStep 2 holds the full -6..+7 range of the widest board with headroom.
-  chartY: 36, chartH: 30,
+  chartY: 34, chartH: 13 * CHART_ROWSTEP + 2,  // 13 units is every board, exactly
   headY: 71,
   rowY: 81, rowStep: 8,
   ctrlY: 133,
@@ -113,7 +113,9 @@ export function composeFrame(s: FrameState): Field {
   // bulbs, and the 45-glyph set has no '%' for exactly that reason.
 
   // ---- the chart ----------------------------------------------------------------
-  const mid = R.chartY + Math.round(R.chartH / 2);
+  // Anchored to the board's range: differentials run -l..+w and w + l is always 13, so
+  // every board spans the same 13 units and the zero line simply sits where it belongs.
+  const mid = rowForDiff(0, w, R.chartY);
   const chartW = 13 * CHART_COLSTEP;
   f.run(CHART_X, mid, chartW + 1, 'h', 'amber', 1, 2); // the zero line, alternating = a fence
 
@@ -121,18 +123,29 @@ export function composeFrame(s: FrameState): Field {
   // the claim is alive, RED once it is refuted — nothing else is ever either ink.
   if (s.propId !== null && s.propId >= 2) {
     const fenceInk = s.phase === 'settled' && !s.result?.won ? 'red' : 'green';
-    f.run(CHART_X, mid - ticketRow(s.propId) * CHART_ROWSTEP, chartW + 1, 'h', fenceInk, s.phase === 'idle' ? 1 : 2, 3);
+    f.run(CHART_X, rowForDiff(ticketRow(s.propId), w, R.chartY), chartW + 1, 'h', fenceInk, s.phase === 'idle' ? 1 : 2, 3);
   }
 
   if (s.phase === 'idle') {
-    // the reachable envelope: how far ahead or behind the curve can still be. Its
-    // BOUNDARY is d2 (ui.md §2.2) — one d4 region per frame, and it is not this one.
-    for (let i = 0; i <= 13; i++) {
-      f.lamp(CHART_X + i * CHART_COLSTEP, mid - Math.min(i, w) * CHART_ROWSTEP, 'amber', 2);
-      f.lamp(CHART_X + i * CHART_COLSTEP, mid + Math.min(i, s.l) * CHART_ROWSTEP, 'amber', 2);
+    // The reachable envelope — every ordering that ends this score lives inside this
+    // wedge. Drawn as a CONNECTED boundary, not a lamp per point: at colStep 8 the
+    // isolated nodes read as scattered noise rather than as a shape. Its boundary sits
+    // at d2 (ui.md §2.2) — one d4 region per frame, and it is not this one.
+    let pux = CHART_X, puy = mid, plx = CHART_X, ply = mid;
+    for (let i = 1; i <= 13; i++) {
+      const x = CHART_X + i * CHART_COLSTEP;
+      const uy = rowForDiff(Math.min(i, w), w, R.chartY);
+      const ly = rowForDiff(-Math.min(i, s.l), w, R.chartY);
+      for (const [x0, y0, x1, y1] of [[pux, puy, x, uy], [plx, ply, x, ly]] as const) {
+        const dx = x1 - x0, dy = y1 - y0, n = Math.max(Math.abs(dx), Math.abs(dy));
+        for (let k = 1; k <= n; k++) {
+          f.lamp(x0 + Math.round((dx * k) / n), y0 + Math.round((dy * k) / n), 'amber', 2);
+        }
+      }
+      pux = x; puy = uy; plx = x; ply = ly;
     }
   } else if (s.result) {
-    drawWalk(f, s.result.mask, s.beat, R.chartY, R.chartH, { headHot: s.headHot, ghost: s.ghost });
+    drawWalk(f, s.result.mask, s.beat, R.chartY, w, { headHot: s.headHot, ghost: s.ghost });
   }
 
   // ---- menu head ----------------------------------------------------------------
