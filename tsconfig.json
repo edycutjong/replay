@@ -20,5 +20,5 @@
       "@chain/casino-sdk/host": ["./src/vendor/casino-sdk/host.ts"]
     }
   },
-  "include": ["src", "scripts", "test", "vite.config.ts"]
+  "include": ["src", "scripts", "test", "vite.config.ts", "vitest.config.ts"]
 }
