@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { geometry, makeSprites, renderCanvas, lampRegion, drawSocketField, type Geometry } from './render/bulbs';
 import { composeStatic, composeChart, CHART_BAND, rowRect, rowIndexForProp, WIDE_COLS, WIDE_ROWS, type FrameState } from './render/coldOpen';
-import { boardMenu, formatPayout } from './game/menu';
+import { boardMenu, formatPayout, toNumber } from './game/menu';
 import { beatTempo, TURBO_BEAT_MS } from './game/tempo';
 import { curve } from './render/replay';
 import { ticketRow, type PropId } from './game/codec';
 import { dealBoard, settleLocally, isEmbedded } from './bridge/demoHost';
 import { composeWordmark, BOOT_MS } from './render/boot';
+import { Voices } from './audio/voices';
+import { sfx } from './audio/bindings';
 import { WORDMARK_PATHS, WORDMARK_ADV, WORDMARK_CAP, WORDMARK_LAMPS } from './render/wordmark';
 import './styles/crt.css';
 
@@ -19,6 +21,9 @@ export function App() {
   const geoRef = useRef<Geometry | null>(null);
   const spritesRef = useRef<ReturnType<typeof makeSprites> | null>(null);
   const timers = useRef<number[]>([]);
+  const voices = useRef<Voices | null>(null);
+  if (!voices.current) voices.current = new Voices();
+  const [sound, setSound] = useState(() => voices.current!.enabled);
   const [turbo, setTurbo] = useState(false);
   const [boot, setBoot] = useState(true);
   const [markBox, setMarkBox] = useState<{ l: number; t: number; w: number; h: number } | null>(null);
@@ -126,6 +131,8 @@ export function App() {
 
     setSt(s => ({ ...s, phase: 'replay', propId, result, beat: 0, headHot: false, ghost: false }));
     clearTimers();
+    const v = voices.current!;
+    sfx.betLock(v); sfx.ticketTear(v); v.startCrowd();
 
     let t = 0;
     let seenNearMiss = false;
@@ -139,17 +146,32 @@ export function App() {
         ? { ms: TURBO_BEAT_MS, preHoldMs: 0, ghost: false }
         : beatTempo({ d, resolvesTicket: i === resolvedAt, alreadyResolved: already, reTouchesNearMiss: reTouch });
       const at = t + beat.preHoldMs;
+      const byWinner = ((result.mask >> i) & 1) === 0; // a set bit is a LOSER point
       timers.current.push(window.setTimeout(() => {
         setSt(s => ({ ...s, beat: i + 1, headHot: true, ghost: beat.ghost }));
+        const v = voices.current!;
+        // the crowd IS the proximity readout — gain and centre are driven by d
+        v.setCrowd(d);
+        if (i === 12) sfx.reconcile(v); else sfx.point(v, byWinner);
       }, at));
       timers.current.push(window.setTimeout(() => setSt(s => ({ ...s, headHot: false })), at + 90));
       t += beat.ms;
     }
-    timers.current.push(window.setTimeout(() => setSt(s => ({ ...s, phase: 'settled', headHot: false, ghost: false })), t + 120));
+    timers.current.push(window.setTimeout(() => {
+      setSt(s => ({ ...s, phase: 'settled', headHot: false, ghost: false }));
+      const v = voices.current!;
+      v.stopCrowd();
+      // "nearly" is its own verdict, and it is the one the near-miss beat exists for
+      if (result.won) sfx.win(v);
+      else if (seenNearMiss) sfx.nearMiss(v);
+      else sfx.loss(v);
+    }, t + 120));
   }, [st.l, turbo]);
 
   const deal = useCallback(() => {
     clearTimers();
+    voices.current!.stopCrowd();
+    sfx.deal(voices.current!);
     const { l, winnerSide } = dealBoard();
     setSt({ l, winnerSide, phase: 'idle', propId: null, hover: null, result: null, beat: 0, headHot: false, ghost: false });
   }, []);
@@ -180,7 +202,12 @@ export function App() {
   const onMove = (e: React.PointerEvent): void => {
     if (st.phase !== 'idle') return;
     const i = hitRow(e);
-    setSt(s => (s.hover === i ? s : { ...s, hover: i }));
+    setSt(s => {
+      if (s.hover === i) return s;
+      // pitch = odds: scrubbing the menu is a rising scale and the long shot is the top note
+      if (i !== null) sfx.focus(voices.current!, toNumber(boardMenu(s.l)[i].payout));
+      return { ...s, hover: i };
+    });
   };
 
   const onDown = (e: React.PointerEvent): void => {
@@ -232,9 +259,18 @@ export function App() {
       {/* The settled controls band belongs to the lamp layer (NO PAY / CLICK TO DEAL
           AGAIN), so the DOM button stands down rather than printing over it. */}
       {!boot && st.phase !== 'settled' && (
-        <button className="turbo" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
-          TURBO {turbo ? 'ON' : 'OFF'}
-        </button>
+        <>
+          <button className="turbo" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
+            TURBO {turbo ? 'ON' : 'OFF'}
+          </button>
+          <button
+            className="snd"
+            aria-pressed={sound}
+            onClick={() => { const on = voices.current!.toggle(); setSound(on); if (on) sfx.boot(voices.current!); }}
+          >
+            SOUND {sound ? 'ON' : 'OFF'}
+          </button>
+        </>
       )}
       {!boot && !isEmbedded() && <p className="demo">DEMO · PLAY MONEY</p>}
       <div className="crt" />

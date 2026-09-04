@@ -84,3 +84,11 @@ body {
 }
 @keyframes handoff { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .boot { animation-duration: 1ms; } }
+
+.snd {
+  position: absolute; left: 13%; bottom: 11.2%;
+  font: inherit; font-size: clamp(7px, 0.72vw, 10px); letter-spacing: 0.14em;
+  background: none; border: 0; padding: 2px 4px; color: var(--amber-3); cursor: pointer;
+}
+.snd:hover, .snd:focus-visible { color: var(--amber-4); outline: none; }
+.snd[aria-pressed='true'] { color: #3DFF6E; }
