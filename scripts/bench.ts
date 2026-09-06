@@ -242,19 +242,25 @@ function record(row: string, xs: number[], threshold: number, unit = 'ms'): void
   if (!pass) failures++;
 }
 
-// B4 first — it needs no browser. The 25-row menu is a closed form; a regression here
-// means someone replaced O(1) arithmetic with an enumeration.
-{
-  const xs: number[] = [];
-  for (let i = 0; i < 200; i++) {
-    const t = performance.now();
-    fullMenu().map(formatPayout);
-    xs.push(performance.now() - t);
-  }
-  record('menu-reprice', xs, 1);
-}
-
 if (!SKIP_B) {
+  // Needs no browser, but it is still a TIMING row, so it belongs behind the same flag
+  // as the rest of Block B. Leaving it outside meant `--block-a` -- the mode CI runs
+  // precisely because it is deterministic -- still carried a wall-clock threshold, and
+  // a shared runner duly measured p95 1.4 ms against a 1 ms bar and failed a build that
+  // had nothing wrong with it.
+  //
+  // The 25-row menu is a closed form; a regression here means someone replaced O(1)
+  // arithmetic with an enumeration.
+  {
+    const xs: number[] = [];
+    for (let i = 0; i < 200; i++) {
+      const t = performance.now();
+      fullMenu().map(formatPayout);
+      xs.push(performance.now() - t);
+    }
+    record('menu-reprice', xs, 1);
+  }
+
   console.log(`\n${D}Block B — building, then measuring in headless Chromium…${Z}`);
   execSync('npm run build', { stdio: 'pipe' });
 
