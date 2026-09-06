@@ -320,6 +320,14 @@ export function App() {
     });
   }, [src]);
 
+  /** SOUND. Named rather than inline on the button, because the M shortcut has to do
+   *  exactly this and a second copy of it would be a second thing to keep in step. */
+  const toggleSound = useCallback(() => {
+    const on = voices.current!.toggle();
+    setSound(on);
+    if (on) { sfx.boot(voices.current!); voices.current!.startHum(); } else voices.current!.stopHum();
+  }, []);
+
   /** NEW REEL — leave the published reel for a fresh one drawn from the browser's CSPRNG.
    *  This is the ONLY control that changes the meta line's provenance string, which is
    *  why that string is derived from `src` rather than typed into the markup. */
@@ -328,6 +336,27 @@ export function App() {
     setSrc(fresh);
     deal(fresh, 0);
   }, [deal]);
+
+  /**
+   * The cabinet switches, bound at the window rather than on the board. A shortcut that
+   * only fires while one particular element holds focus is not much of a shortcut, and
+   * there is no text input anywhere on this page for a bare letter key to interfere with.
+   * Modified presses are left alone so the browser keeps its own shortcuts.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === 'escape') { if (help) { e.preventDefault(); setHelp(false); } return; }
+      if (k === 't') { e.preventDefault(); setTurbo(t => !t); return; }
+      if (k === 'h') { e.preventDefault(); setHelp(h => !h); return; }
+      if (k === 'm') { e.preventDefault(); toggleSound(); return; }
+      // NEW REEL only exists standalone: bridged, the chain owns the randomness
+      if (k === 'n' && !bridged) { e.preventDefault(); newReel(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [help, bridged, newReel, toggleSound]);
 
   // ---- pointer ------------------------------------------------------------------
   const toLamp = (e: React.PointerEvent): { c: number; r: number } | null => {
@@ -503,16 +532,18 @@ export function App() {
           AGAIN), so the DOM button stands down rather than printing over it. */}
       {!boot && st.phase !== 'settled' && (
         <div className="controls">
-          <button className="btn" onClick={() => setTurbo(t => !t)} aria-pressed={turbo}>
+          <button className="btn" onClick={() => setTurbo(t => !t)} aria-pressed={turbo} title="Turbo (T)" aria-keyshortcuts="t">
             <span className="lamp" aria-hidden="true" />TURBO
           </button>
-          <button className="btn" onClick={() => setHelp(h => !h)} aria-pressed={help} aria-expanded={help}>
+          <button className="btn" onClick={() => setHelp(h => !h)} aria-pressed={help} aria-expanded={help} title="How it works (H)" aria-keyshortcuts="h">
             <span className="lamp" aria-hidden="true" />HOW IT WORKS
           </button>
           <button
             className="btn"
             aria-pressed={sound}
-            onClick={() => { const on = voices.current!.toggle(); setSound(on); if (on) { sfx.boot(voices.current!); voices.current!.startHum(); } else voices.current!.stopHum(); }}
+            onClick={toggleSound}
+            title="Sound (M)"
+            aria-keyshortcuts="m"
           >
             <span className="lamp" aria-hidden="true" />SOUND
           </button>
@@ -520,7 +551,7 @@ export function App() {
               fixed sequence a player can memorise, which is the one way a curated reel
               could cost us the Fun criterion it exists to serve. */}
           {!bridged && (
-            <button className="btn" onClick={newReel}>
+            <button className="btn" onClick={newReel} title="New reel (N)" aria-keyshortcuts="n">
               <span className="lamp" aria-hidden="true" />NEW REEL
             </button>
           )}
@@ -571,6 +602,11 @@ export function App() {
             Then the 13 points replay one at a time, and you watch whether the line ever reaches
             your row. Turn SOUND on: the winner's point and the loser's point are different pitches,
             so you can hear a comeback without looking.
+          </p>
+          <p className="fine">
+            <b>Keys:</b> arrows or 1-6 choose a ticket, Enter or Space bets it, and on a
+            settled board either deals again. <b>T</b> turbo, <b>H</b> this panel,
+            <b>M</b> sound{!bridged ? <>, <b>N</b> a new reel</> : null}.
           </p>
         </div>
       )}

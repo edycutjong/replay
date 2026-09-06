@@ -364,6 +364,83 @@ describe('App — the board from a keyboard', () => {
   });
 });
 
+describe('App — the cabinet switches, from a keyboard', () => {
+  /** Bound at the window, not the board: a shortcut that only fires while one element
+   *  holds focus is not a shortcut. There is no text input on this page, so a bare letter
+   *  key has nothing to interfere with. */
+  const mount = async () => { render(<App />); await bootUp(); };
+  const pressed = (name: RegExp) => screen.getByRole('button', { name }).getAttribute('aria-pressed');
+
+  it('T toggles turbo from anywhere on the page', async () => {
+    await mount();
+    expect(pressed(/TURBO/)).toBe('false');
+    fireEvent.keyDown(window, { key: 't' });
+    expect(pressed(/TURBO/)).toBe('true');
+    fireEvent.keyDown(window, { key: 'T' });          // shifted, same switch
+    expect(pressed(/TURBO/)).toBe('false');
+  });
+
+  it('H opens the panel and Escape closes it', async () => {
+    await mount();
+    fireEvent.keyDown(window, { key: 'h' });
+    expect(screen.getByRole('dialog', { name: 'How Replay works' })).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // Escape with nothing open is not an error and not a toggle
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'h' });
+    fireEvent.keyDown(window, { key: 'h' });          // H also closes it
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('the panel lists the keys, so they are discoverable without more chrome', async () => {
+    await mount();
+    fireEvent.keyDown(window, { key: 'h' });
+    expect(screen.getByRole('dialog')).toHaveTextContent(/arrows or 1-6 choose a ticket/i);
+    expect(screen.getByRole('dialog')).toHaveTextContent(/a new reel/i);
+  });
+
+  it('M toggles the sound switch', async () => {
+    await mount();
+    expect(pressed(/SOUND/)).toBe('false');
+    fireEvent.keyDown(window, { key: 'm' });
+    expect(pressed(/SOUND/)).toBe('true');
+    fireEvent.keyDown(window, { key: 'm' });
+    expect(pressed(/SOUND/)).toBe('false');
+  });
+
+  it('N takes a fresh reel, and the entropy label follows it', async () => {
+    await mount();
+    expect(screen.getByText(/ENTROPY SEEDED KECCAK/)).toBeInTheDocument();
+    await act(async () => { fireEvent.keyDown(window, { key: 'n' }); });
+    expect(screen.getByText(/ENTROPY BROWSER CSPRNG/)).toBeInTheDocument();
+  });
+
+  it('leaves modified presses to the browser', async () => {
+    await mount();
+    fireEvent.keyDown(window, { key: 't', metaKey: true });
+    fireEvent.keyDown(window, { key: 't', ctrlKey: true });
+    fireEvent.keyDown(window, { key: 't', altKey: true });
+    expect(pressed(/TURBO/)).toBe('false');
+    fireEvent.keyDown(window, { key: 'z' });          // a key with no meaning here
+    expect(pressed(/TURBO/)).toBe('false');
+  });
+
+  it('has no N to press once a host is driving the randomness', async () => {
+    const api = {
+      openSession: vi.fn(), revealOutcome: vi.fn(), submitAction: vi.fn(), cancelStuckRandomness: vi.fn(),
+    };
+    connectGameToHostMock.mockImplementationOnce(() => ({ promise: Promise.resolve(api), destroy: vi.fn() }));
+    await mount();
+    expect(screen.getByText(/ENTROPY CHAIN VRF/)).toBeInTheDocument();
+    await act(async () => { fireEvent.keyDown(window, { key: 'n' }); });
+    expect(screen.getByText(/ENTROPY CHAIN VRF/)).toBeInTheDocument();   // unchanged
+    fireEvent.keyDown(window, { key: 'h' });
+    expect(screen.getByRole('dialog')).not.toHaveTextContent(/a new reel/i);
+  });
+});
+
 describe('App — toggles', () => {
   it('TURBO flips its pressed state', async () => {
     render(<App />);
