@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/edycutjong/replay/compare/v1.1.0...v1.2.0) (2026-09-06)
+
+### Game
+
+* **meta:** give the page a link preview ([a0db605](https://github.com/edycutjong/replay/commit/a0db605e2e0884199e723cb09c29bf85d1495e4f))
+
 ## [1.1.0](https://github.com/edycutjong/replay/compare/v1.0.2...v1.1.0) (2026-09-06)
 
 ### Game
