@@ -182,7 +182,13 @@ export function composeFrame(s: FrameState): Field {
     let duty = dim && !isMine ? 1 : 3;
     if (isMine) {
       // GREEN is your ticket alive; RED is your ticket dead. Nothing else is ever either.
-      ink = s.phase === 'settled' ? (s.result?.won ? 'green' : 'red') : 'green';
+      //
+      // Keyed to `refuted`, exactly like the fence above, because "dead" is a fact about
+      // the claim and not about the round being over. Reading `phase === 'settled'` here
+      // meant that on the ghost touch the board said both things at once: the fence and
+      // the curve went red on the beat the ticket died, while the row naming that same
+      // ticket stayed green until the last beat had played.
+      ink = s.refuted || (s.phase === 'settled' && !s.result?.won) ? 'red' : 'green';
       duty = 4;
     } else if (s.phase === 'idle' && s.hover === i) {
       duty = 4; // the focus tick — a duty state, never an outline

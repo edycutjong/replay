@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   composeFrame, composeStatic, composeChart, CHART_BAND, rowRect, rowIndexForProp,
-  WIDE_COLS, WIDE_ROWS, type FrameState,
+  WIDE_COLS, WIDE_ROWS, R, type FrameState,
 } from '../src/render/coldOpen';
 import { rowForDiff, CHART_X, CHART_COLSTEP } from '../src/render/replay';
 import { boardMenu } from '../src/game/menu';
@@ -189,5 +189,44 @@ describe('rowRect / rowIndexForProp', () => {
   it('board dimensions match the fixed wide layout', () => {
     expect(WIDE_COLS).toBe(256);
     expect(WIDE_ROWS).toBe(152);
+  });
+});
+
+describe('the player\'s row and the fence tell the same story', () => {
+  /** The ghost touch drew a red curve over a red fence while the row naming that ticket
+   *  was still green. Both surfaces answer to `refuted` now: dead is a fact about the
+   *  claim, not about the round being over. */
+  const inkAt = (f: ReturnType<typeof composeFrame>, r: number): string | undefined =>
+    f.list().find(l => l.r === r && l.ink !== 'amber')?.ink;
+
+  const state = (over: Partial<FrameState>): FrameState => ({
+    l: 5, winnerSide: 'HOME', phase: 'replay', propId: 5, hover: null,
+    result: null, beat: 7, headHot: false, ghost: false, refuted: false, ...over,
+  });
+
+  it('is green on both while the claim is alive', () => {
+    const f = composeFrame(state({ refuted: false }));
+    expect(inkAt(f, R.rowY + 5 * R.rowStep)).toBe('green');
+  });
+
+  it('turns the row red on the beat the claim dies, not at the end of the round', () => {
+    const f = composeFrame(state({ refuted: true }));
+    expect(inkAt(f, R.rowY + 5 * R.rowStep)).toBe('red');
+  });
+
+  it('still marks a settled loss red even if nothing refuted it early', () => {
+    const f = composeFrame(state({
+      phase: 'settled', refuted: false,
+      result: { l: 5, propId: 5, pathId: 1, mask: 0, maxDeficit: 0, struckFirst: false, won: false },
+    }));
+    expect(inkAt(f, R.rowY + 5 * R.rowStep)).toBe('red');
+  });
+
+  it('leaves a winning ticket green', () => {
+    const f = composeFrame(state({
+      phase: 'settled', refuted: false,
+      result: { l: 5, propId: 5, pathId: 1, mask: 0, maxDeficit: 4, struckFirst: false, won: true },
+    }));
+    expect(inkAt(f, R.rowY + 5 * R.rowStep)).toBe('green');
   });
 });
