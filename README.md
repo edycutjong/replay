@@ -8,7 +8,18 @@
 
 <img src="./docs/hero.png" width="760" alt="Replay — the cold open">
 
-**[▶ PLAY IT](https://replay.edycu.dev)** &nbsp;·&nbsp; [DEMO.md](./DEMO.md) &nbsp;·&nbsp; [FEEDBACK.md](./FEEDBACK.md)
+All 1,287 orderings on the 8–5 board were swept against the deployed facet: exactly **13**
+win, matching `C(13,1)`, and each pays the **96.03×** cap to the wei. Reproduce it with
+`npm test`.
+
+<br/>
+
+[![Live Demo](https://img.shields.io/badge/🚀_Live-Play_it-06b6d4?style=for-the-badge)](https://replay.edycu.dev)
+[![Runbook](https://img.shields.io/badge/📋_Reviewer-Runbook-8b5cf6?style=for-the-badge)](./DEMO.md)
+[![SDK Feedback](https://img.shields.io/badge/🛠_SDK-FEEDBACK.md-3DFF6E?style=for-the-badge)](./FEEDBACK.md)
+[![Built for Chain Jam](https://img.shields.io/badge/Chain_Jam-Vol._1-FFA51E?style=for-the-badge)](https://jam.chain.wtf)
+
+<br/>
 
 ![Solidity](https://img.shields.io/badge/Solidity-0.8.30-05060B?style=flat-square)
 ![ICasinoGameV2](https://img.shields.io/badge/ICasinoGameV2-implemented-FFA51E?style=flat-square)
@@ -16,15 +27,24 @@
 ![Max](https://img.shields.io/badge/max_payout-96.03×-FFA51E?style=flat-square)
 ![Tests](https://img.shields.io/badge/tests-72_passing-3DFF6E?style=flat-square)
 ![Coverage](https://img.shields.io/badge/game_logic_coverage-100%25-3DFF6E?style=flat-square)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/edycutjong/replay-chain-jam/actions/workflows/deploy.yml/badge.svg)](https://github.com/edycutjong/replay-chain-jam/actions/workflows/deploy.yml)
+[![Release](https://img.shields.io/github/v/release/edycutjong/replay-chain-jam?sort=semver)](https://github.com/edycutjong/replay-chain-jam/releases/latest)
 
 </div>
 
 ---
 
-## 🎲 The inversion
+## 💡 The Problem & Solution
 
-Every casino game hides the outcome and shows you the odds. **Replay shows you the outcome
-and sells you the route.**
+### The Problem
+
+Every casino game hides the outcome and shows you the odds. That forces the price to be an
+estimate, and it forces the player to take the estimate on trust.
+
+### The Solution
+
+**Replay shows you the outcome and sells you the route.**
 
 A 13-point game ends **8–5**. That is on the board before you bet a cent. What you wager on
 is *which of the 1,287 orderings of those 13 points actually happened* — did the loser
@@ -33,7 +53,7 @@ strike first, was the winner never behind, did they climb out of a four-point ho
 The bet object does not exist in any casino or sportsbook. The primitive it rides on is a
 scoreboard, which needs no explanation.
 
-## 🧮 Why the odds are an integer you can count
+### Why the odds are an integer you can count
 
 Because the score is revealed **before** the bet, the pricing problem stops being an
 estimate and becomes counting. There are exactly `C(13,5) = 1,287` orderings that end 8–5,
@@ -59,7 +79,7 @@ expectedPayout = (wager * RTP_NUM) / RTP_DEN;   // RTP_NUM = 97, RTP_DEN = 100
 `96.03×` is exact: `0.97 × (1287/13) = 0.97 × 99`. The whole paytable is arithmetic you can
 redo by hand — and `npm test` redoes it for you.
 
-## ⚙️ How it runs
+## 🏗️ Architecture & Tech Stack
 
 ```
 contracts/Replay.sol      ICasinoGameV2 — no constructor args, no loop over the ordering
@@ -80,20 +100,9 @@ and it yields the shareable **PATH ID** for free.
 **The contract writes the mask; the client renders it.** With a host present nothing about
 the outcome is recomputed client-side.
 
-## 🔍 For the reviewer, in under a minute
+## 🏆 Chain Casino SDK Integration
 
-```sh
-npm install
-npm test          # 72 tests. Rebuilds the entire paytable from the closed forms.
-npm run coverage  # 100% on src/game/** — statements, branches, functions, lines
-npm run spike     # 9 @chain/casino-sdk symbols exercised end to end
-npm run build && npm run preview
-```
-
-Full runbook, including a bet → VRF → payout round against the SDK's bundled simulator,
-is in **[DEMO.md](./DEMO.md)**.
-
-### Three integration details worth checking
+Three integration details worth checking:
 
 1. **`quoteCaps`, `quoteRiskParams` and `onRandomness` all call one `_payout()`.** The
    facet caps payout at `escrowedStake + reservedProfit` with **zero slack**, so any
@@ -106,10 +115,64 @@ is in **[DEMO.md](./DEMO.md)**.
 3. **`onSessionStart` is a pure function of `(wagerBase, gameData)`.** Production calls it
    twice, once as a simulation with `sessionId == 0`; it is idempotent by construction.
 
+`npm run spike` exercises 9 `@chain/casino-sdk` symbols end to end.
+
 > **CSP note for anyone redeploying:** `vercel.json` sets `Content-Security-Policy:
 > frame-ancestors *` and *nothing else*, and there is no `X-Frame-Options` anywhere. A
 > stray `SAMEORIGIN` from a framework preset wins in some browsers and silently costs the
 > gallery's live preview.
+
+## 📊 Engineering Rigor
+
+| Measure | Result | How it is checked |
+|---|---|---|
+| Tests | **72 passing** | `npm test` — rebuilds the entire paytable from the closed forms |
+| Game-logic coverage | **100%** | `npm run coverage` — statements, branches, functions, lines, thresholds enforced |
+| Ordering sweep | **4,082** across all five boards | `npm run bench` Block A, brute force vs. the closed forms |
+| Golden digests | **6 of 6** reproduced | combined `0x6ec73a1c…2720` over the 8,164-byte preimage |
+| Cold open | **p95 65 ms** (budget 1,200) | `npm run bench` Block B, headless Chromium on the built `dist` |
+| Replay frame | **p95 9.4 ms** (60 fps budget) | measured as real `rAF` deltas during a live round |
+| UI gates | **9 of 9** | `npm run gates` — hue discipline, integer pitch, menu budget, embeddability |
+| SDK symbols | **9 exercised** | `npm run spike` |
+
+Absolute timings are machine-dependent and are not a claim about anything; the thresholds
+are the claim, and a threshold miss fails the build.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Node 22+. The toolchain is Vite 7, React 19 and TypeScript in strict mode.
+
+### Installation
+
+```sh
+npm install
+npm run build && npm run preview
+```
+
+Or skip it entirely and open **[replay.edycu.dev](https://replay.edycu.dev)** — the game
+runs standalone with no wallet and no host.
+
+## 🧪 Testing & CI
+
+For the reviewer, in under a minute:
+
+```sh
+npm test          # 72 tests. Rebuilds the entire paytable from the closed forms.
+npm run coverage  # 100% on src/game/** — statements, branches, functions, lines
+npm run spike     # 9 @chain/casino-sdk symbols exercised end to end
+npm run bench     # the 4,082-ordering sweep, the golden digests, four render thresholds
+npm run gates     # the nine mechanical ui.md gates
+```
+
+Full runbook, including a bet → VRF → payout round against the SDK's bundled simulator,
+is in **[DEMO.md](./DEMO.md)**.
+
+Every push runs **verify → release → deploy**: types, tests, the paytable block, the build,
+the nine gates and the SDK spike, then a semantic-release version, then a deploy that
+**re-reads the live origin** to confirm it still serves `frame-ancestors *`, the jam widget
+tag exactly once in the raw HTML, and the manifest at the origin.
 
 ## 🎛️ Playing it
 
@@ -142,6 +205,6 @@ Amber shifts hue as it dims and the LEDs do not, because a tungsten filament coo
 blackbody curve and an LED is spectrally narrow. It costs nothing and a reviewer can verify
 it with a colour picker.
 
-## 📄 Licence
+## 📄 License
 
 MIT. Built for [Chain Jam Vol. 1](https://jam.chain.wtf).
