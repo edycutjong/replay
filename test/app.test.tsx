@@ -412,6 +412,34 @@ describe('App — the cabinet switches, from a keyboard', () => {
     expect(legend.textContent).toMatch(/BET/);
   });
 
+  it('moves focus into the panel and keeps Tab inside it', async () => {
+    await mount();
+    fireEvent.keyDown(window, { key: 'h' });
+    const dialog = screen.getByRole('dialog');
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(document.activeElement).toBe(close);          // opens ON the panel, not behind it
+
+    // CLOSE is the panel's only focusable, so Tab in either direction stays on it rather
+    // than walking the four cabinet buttons underneath the thing covering them
+    fireEvent.keyDown(window, { key: 'Tab' });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    // and if focus escapes anyway, the next Tab pulls it back in — both directions, since
+    // a user who has landed on a background control is as likely to shift-Tab as to Tab
+    (screen.getByRole('button', { name: /TURBO/ }) as HTMLElement).focus();
+    fireEvent.keyDown(window, { key: 'Tab' });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    (screen.getByRole('button', { name: /SOUND/ }) as HTMLElement).focus();
+    fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('the panel lists the keys, so they are discoverable without more chrome', async () => {
     await mount();
     fireEvent.keyDown(window, { key: 'h' });

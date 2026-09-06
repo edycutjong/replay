@@ -354,6 +354,42 @@ export function App() {
    * beat 0 forever and meant a hosted round never reached `settled` at all. Guarding on
    * the id makes re-entry harmless whatever the deps do.
    */
+  /**
+   * The panel had `role="dialog"` and nothing else: opening it left focus on the board, so
+   * Tab walked all four cabinet buttons — still operable, underneath the thing covering
+   * them — before ever reaching CLOSE, and the panel's own content was never reached at
+   * all. Lighthouse scored accessibility 100 with zero violations, because "is there a
+   * focus trap" is not an automated check.
+   *
+   * Focus moves to CLOSE on open, and Tab wraps inside the panel until it is dismissed.
+   * Escape already closed it (the window-level shortcut) and still does.
+   */
+  const helpRef = useRef<HTMLDivElement>(null);
+  const helpCloseRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!help) return;
+    helpCloseRef.current?.focus();
+    const onTab = (e: KeyboardEvent): void => {
+      if (e.key !== 'Tab' || !helpRef.current) return;
+      const f = helpRef.current.querySelectorAll<HTMLElement>(
+        'a[href],button,input,select,textarea,[tabindex]:not([tabindex="-1"])');
+      // CLOSE renders unconditionally inside this panel, so the list is never empty while
+      // the effect can run. Kept as a guard against a future panel that renders no control,
+      // rather than deleted to satisfy a threshold.
+      /* v8 ignore next -- see above: unreachable while CLOSE is unconditional */
+      if (f.length === 0) return;
+      const first = f[0], last = f[f.length - 1];
+      // wrap in both directions, and pull focus back in if it has escaped the panel
+      if (e.shiftKey && (document.activeElement === first || !helpRef.current.contains(document.activeElement))) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !helpRef.current.contains(document.activeElement))) {
+        e.preventDefault(); first.focus();
+      }
+    };
+    window.addEventListener('keydown', onTab);
+    return () => window.removeEventListener('keydown', onTab);
+  }, [help]);
+
   const startedRef = useRef<string | null>(null);
   useEffect(() => {
     const p = host.pending;
@@ -658,8 +694,8 @@ export function App() {
         /* ui.md §9.3 bans a splash, a modal on load and a tutorial, because Simplicity is
            25% and reads "no manual needed" — so this NEVER opens by itself. It is a
            button, for the player who wants it, and the cold open is still zero clicks. */
-        <div className="help" role="dialog" aria-label="How Replay works">
-          <button className="helpClose" onClick={() => setHelp(false)} aria-label="Close">CLOSE ×</button>
+        <div className="help" role="dialog" aria-modal="true" aria-label="How Replay works" ref={helpRef}>
+          <button className="helpClose" onClick={() => setHelp(false)} aria-label="Close" ref={helpCloseRef}>CLOSE ×</button>
           <h2>THE SCORE IS ALREADY FINAL.</h2>
           <p>
             A 13-point game ended <b>{st.winnerSide === 'HOME' ? 'HOME' : 'AWAY'} {13 - st.l} —{' '}

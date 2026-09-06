@@ -197,7 +197,10 @@ note.
 rather than resetting each round — the swing beside the total is the round's net, not the
 ticket's gross, and `REFILL` restores the opening purse whenever you are down. Winnings
 floor to whole chips: the payout is an exact rational and the stake an integer, so the
-product is exact and only that last floor gives anything up. The purse exists **only in
+product is exact and only that last floor gives anything up. **The purse lives for one page
+load** — nothing is stored, so a reload deals you a fresh 2,000. Persisting it would mean
+writing a balance to the browser that looks like it survives and does not, which is a worse
+lie than resetting. The purse exists **only in
 the standalone demo**. Inside the casino the host owns the balance and draws its own, and
 it clamps that display downward-only until the reveal finishes — a second number on screen
 would give the result away 13 beats early.

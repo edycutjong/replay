@@ -179,6 +179,21 @@ body {
    its three declared values. */
 @media (max-width: 620px) {
   .meta, .demo { font-size: 6px; letter-spacing: 0.02em; }
+  /* The cabinet buttons stop fitting INSIDE the board here. Their font floors at 6px while
+     the lamp keeps shrinking, so by 390px they are taller than the eight-row CONTROLS band
+     they are positioned against and print straight over the lamp layer's own
+     PICK A ROW ABOVE TO BET. Measured at 390x844: controls 513-518, lamp band 507-520.
+     The board is letterboxed at that width — 232px of board in an 844px viewport — so the
+     space below it is empty. Move them there. `.stage` shrink-wraps the canvas, so
+     `top: 100%` is exactly the bottom edge of the board. */
+  .controls { top: calc(100% + var(--lamp) * 3); bottom: auto; left: 0; right: 0;
+              justify-content: center; flex-wrap: wrap; }
+  /* Same failure as the buttons, one line up: the purse floors at 7px while the lamp keeps
+     shrinking, so a lamp-relative offset of 3.2 puts it 4px under a 6px badge. Below 620 the
+     top strip is measured in px, not lamps, because the lamp is no longer big enough to
+     measure type with. */
+  .purse { font-size: 7px; top: 12px; letter-spacing: 0.02em; gap: 4px; }
+  .refill { font-size: 6px; padding: 1px 3px; }
 }
 
 /* THE ONE GRADIENT IN THE BUILD (ui.md §1.4). The poster's own chrome ramp, verbatim.

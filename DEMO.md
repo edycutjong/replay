@@ -31,13 +31,21 @@ npm test
 ```
 
 ```
- ✓ test/enumeration.test.ts (44 tests)
- ✓ test/tempo-codec.test.ts (14 tests)
- ✓ test/codec-differential.test.ts (11 tests)
- ✓ test/audio.test.ts (3 tests)
-
- Test Files  4 passed (4)
-      Tests  72 passed (72)
+ ✓ test/tempo-codec.test.ts (11 tests) 17ms
+ ✓ test/voices.test.ts (20 tests) 20ms
+ ✓ test/bulbs.test.ts (20 tests) 25ms
+ ✓ test/cold-open.test.ts (23 tests) 59ms
+ ✓ test/enumeration.test.ts (44 tests) 72ms
+ ✓ test/demo-host.test.ts (18 tests) 17ms
+ ✓ test/schedule.test.ts (19 tests) 368ms
+ ✓ test/replay-curve.test.ts (10 tests) 4ms
+ ✓ test/boot-wordmark.test.ts (5 tests) 3ms
+ ✓ test/audio.test.ts (3 tests) 3ms
+ ✓ test/codec-differential.test.ts (14 tests) 3ms
+ ✓ test/use-casino-host.test.tsx (19 tests) 785ms
+ ✓ test/app.test.tsx (49 tests) 2464ms
+ Test Files  13 passed (13)
+      Tests  255 passed (255)
 ```
 
 This rebuilds the entire paytable from the closed forms and asserts, among others:
@@ -54,13 +62,32 @@ npm run coverage
 ```
 
 ```
-File       | % Stmts | % Branch | % Funcs | % Lines
-All files  |     100 |      100 |     100 |     100
- codec.ts  |     100 |      100 |     100 |     100
- menu.ts   |     100 |      100 |     100 |     100
- pascal.ts |     100 |      100 |     100 |     100
- tempo.ts  |     100 |      100 |     100 |     100
- unrank.ts |     100 |      100 |     100 |     100
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |     100 |      100 |     100 |     100 |                   
+ src               |     100 |      100 |     100 |     100 |                   
+  App.tsx          |     100 |      100 |     100 |     100 |                   
+ src/audio         |     100 |      100 |     100 |     100 |                   
+  bindings.ts      |     100 |      100 |     100 |     100 |                   
+  voices.ts        |     100 |      100 |     100 |     100 |                   
+ src/bridge        |     100 |      100 |     100 |     100 |                   
+  demoHost.ts      |     100 |      100 |     100 |     100 |                   
+  useCasinoHost.ts |     100 |      100 |     100 |     100 |                   
+ src/game          |     100 |      100 |     100 |     100 |                   
+  codec.ts         |     100 |      100 |     100 |     100 |                   
+  menu.ts          |     100 |      100 |     100 |     100 |                   
+  pascal.ts        |     100 |      100 |     100 |     100 |                   
+  schedule.ts      |     100 |      100 |     100 |     100 |                   
+  tempo.ts         |     100 |      100 |     100 |     100 |                   
+  unrank.ts        |     100 |      100 |     100 |     100 |                   
+ src/render        |     100 |      100 |     100 |     100 |                   
+  boot.ts          |     100 |      100 |     100 |     100 |                   
+  bulbs.ts         |     100 |      100 |     100 |     100 |                   
+  coldOpen.ts      |     100 |      100 |     100 |     100 |                   
+  replay.ts        |     100 |      100 |     100 |     100 |                   
+  wordmark.ts      |     100 |      100 |     100 |     100 |                   
+-------------------|---------|----------|---------|---------|-------------------
 ```
 
 Thresholds are enforced at 100 in `vitest.config.ts`, so this cannot silently regress.
