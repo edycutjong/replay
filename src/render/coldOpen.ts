@@ -47,6 +47,10 @@ export interface FrameState {
   headHot: boolean;
   /** the ghost touch is re-drawing over a dimmed board */
   ghost: boolean;
+  /** the ticket has been refuted — proved impossible, not merely still losing. Set on the
+   *  beat the claim dies rather than at the end of the round, which is what lets the fence
+   *  below mean what its comment has always said it means. */
+  refuted: boolean;
 }
 
 const fmtCount = (n: number): string => n.toLocaleString('en-US');
@@ -123,8 +127,14 @@ export function composeFrame(s: FrameState): Field {
 
   // the ticket's row is a fence the player can see the curve reaching for. GREEN while
   // the claim is alive, RED once it is refuted — nothing else is ever either ink.
+  //
+  // `refuted` is the beat the claim became impossible. This used to read
+  // `s.phase === 'settled' && !s.result?.won`, which turned the fence red only after beat
+  // 13 — so the comment above was a description of an intent the code did not carry out,
+  // and the ghost touch had nothing to be a ghost of: the curve came back to a line that
+  // was still drawn green, on a ticket the player had no way to know was already dead.
   if (s.propId !== null && s.propId >= 2) {
-    const fenceInk = s.phase === 'settled' && !s.result?.won ? 'red' : 'green';
+    const fenceInk = s.refuted ? 'red' : 'green';
     f.run(CHART_X, rowForDiff(ticketRow(s.propId), w, R.chartY), chartW + 1, 'h', fenceInk, s.phase === 'idle' ? 1 : 2, 3);
   }
 

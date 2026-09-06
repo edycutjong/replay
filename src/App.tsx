@@ -2,10 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { geometry, makeSprites, renderCanvas, lampRegion, drawSocketField, type Geometry } from './render/bulbs';
 import { composeStatic, composeChart, CHART_BAND, rowRect, rowIndexForProp, WIDE_COLS, WIDE_ROWS, type FrameState } from './render/coldOpen';
 import { boardMenu, formatPayout, toNumber } from './game/menu';
-import { beatTempo, TURBO_BEAT_MS } from './game/tempo';
-import { curve } from './render/replay';
-import { ticketRow, type PropId } from './game/codec';
-import { dealBoard, settleLocally, isEmbedded } from './bridge/demoHost';
+import { type PropId } from './game/codec';
+import { planReplay } from './game/schedule';
+import {
+  dealBoard, settleLocally, isEmbedded, reelEntropy, csprngEntropy, type Entropy,
+} from './bridge/demoHost';
 import { composeWordmark, BOOT_MS } from './render/boot';
 import { Voices } from './audio/voices';
 import { sfx } from './audio/bindings';
@@ -22,11 +23,17 @@ const PROP_HELP: Record<string, string> = {
 import { WORDMARK_PATHS, WORDMARK_ADV, WORDMARK_CAP, WORDMARK_LAMPS } from './render/wordmark';
 import './styles/crt.css';
 
-/** Deal 0 of the published seed renders HOME 8 — AWAY 5 on first load, so the cold-open
- *  frame is byte-for-byte reproducible in the fixture, the screenshot and the video. */
-const FIRST = { l: 5, winnerSide: 'HOME' as const };
+/** Deal 0 of the published reel renders HOME 8 — AWAY 5 on first load, so the cold-open
+ *  frame is byte-for-byte reproducible in the fixture, the screenshot and the video.
+ *  READ FROM THE REEL rather than typed as a literal: a hardcoded first board is a second
+ *  source of truth that drifts silently the moment the seed changes. */
+const REEL = reelEntropy();
+const FIRST = dealBoard(REEL, 0);
 
 export function App() {
+  /** Measured once: whether we are inside a host iframe. Read every render before, which
+   *  made a same-origin `window.top` access part of the render path for no gain. */
+  const embedded = useRef(isEmbedded()).current;
   const cv = useRef<HTMLCanvasElement>(null);
   /** the full viewport box — what the board is sized to FIT INTO. Measured here rather
    *  than on the canvas's own parent, which is now .stage and shrink-wraps the canvas,
@@ -47,9 +54,13 @@ export function App() {
   const [boot, setBoot] = useState(true);
   const [help, setHelp] = useState(false);
   const [markBox, setMarkBox] = useState<{ l: number; t: number; w: number; h: number } | null>(null);
+  /** the entropy in play, and where we are in it. NEW REEL swaps the source, which is the
+   *  only thing that changes the meta line's provenance string. */
+  const [src, setSrc] = useState<Entropy>(() => REEL);
+  const dealNo = useRef(0);
   const [st, setSt] = useState<FrameState>({
     ...FIRST, phase: 'idle', propId: null, hover: null, result: null,
-    beat: 0, headHot: false, ghost: false,
+    beat: 0, headHot: false, ghost: false, refuted: false,
   });
 
   // ---- render -------------------------------------------------------------------
@@ -156,72 +167,68 @@ export function App() {
 
   // ---- the round ----------------------------------------------------------------
   const buy = useCallback((propId: PropId) => {
-    const result = settleLocally(st.l, propId);
-    const pts = curve(result.mask);
-    const row = ticketRow(propId);
+    const result = settleLocally(st.l, propId, src, dealNo.current);
+    // The whole schedule up front, from the mask, so tempo is a function of geometry
+    // rather than something the animation decides as it goes (ui.md §6.4). This used to
+    // be forty lines inline here, which is precisely why it was never tested and why the
+    // ghost touch was unreachable for four of the six props — see src/game/schedule.ts.
+    const plan = planReplay(result.mask, st.l, propId, turbo);
 
-    // Pre-compute the whole beat schedule from the mask, so tempo is a function of
-    // geometry rather than something the animation decides as it goes (ui.md §6.4).
-    let resolvedAt = -1;
-    for (let i = 0; i < 13; i++) {
-      const partial = pts.slice(0, i + 1);
-      const maxDef = Math.max(0, ...partial.map(d => -d));
-      const struck = ((result.mask & 1) !== 0);
-      if (resolvedAt < 0) {
-        if (propId === 0) resolvedAt = 0;                            // beat 1 decides it
-        else if (propId >= 2 && maxDef >= propId - 1) resolvedAt = i; // reach ticket hit
-        else if (propId === 1 && maxDef > 0) resolvedAt = i;         // fence broken
-        else if (i === 12) resolvedAt = 12;                          // survived to the end
-      }
-      void struck;
-    }
-
-    setSt(s => ({ ...s, phase: 'replay', propId, result, beat: 0, headHot: false, ghost: false }));
+    setSt(s => ({
+      ...s, phase: 'replay', propId, result, beat: 0, headHot: false, ghost: false, refuted: false,
+    }));
     clearTimers();
     const v = voices.current!;
     sfx.betLock(v); sfx.ticketTear(v); v.startCrowd();
 
-    let t = 0;
-    let seenNearMiss = false;
-    for (let i = 0; i < 13; i++) {
-      const d = Math.abs(pts[i] - row);
-      const already = i > resolvedAt;
-      // the ghost touch: after the ticket is dead, the curve re-enters the row it missed
-      const reTouch = already && !result.won && d <= 1 && !seenNearMiss;
-      if (reTouch) seenNearMiss = true;
-      const beat = turbo
-        ? { ms: TURBO_BEAT_MS, preHoldMs: 0, ghost: false }
-        : beatTempo({ d, resolvesTicket: i === resolvedAt, alreadyResolved: already, reTouchesNearMiss: reTouch });
-      const at = t + beat.preHoldMs;
-      const byWinner = ((result.mask >> i) & 1) === 0; // a set bit is a LOSER point
+    plan.beats.forEach((beat, i) => {
       timers.current.push(window.setTimeout(() => {
-        setSt(s => ({ ...s, beat: i + 1, headHot: true, ghost: beat.ghost }));
+        // The fence turns red ON the beat the claim dies, never before it — `resolves`
+        // is the first beat at which the outcome is knowable, so this reveals nothing
+        // the arithmetic has not already settled.
+        const refuted = beat.resolves && !plan.won;
+        setSt(s => ({ ...s, beat: i + 1, headHot: true, ghost: beat.ghost, refuted: s.refuted || refuted }));
         const v = voices.current!;
         // the crowd IS the proximity readout — gain and centre are driven by d
-        v.setCrowd(d);
-        if (i === 12) sfx.reconcile(v); else sfx.point(v, byWinner);
-      }, at));
-      timers.current.push(window.setTimeout(() => setSt(s => ({ ...s, headHot: false })), at + 90));
-      t += beat.ms;
-    }
+        v.setCrowd(beat.d);
+        if (i === 12) sfx.reconcile(v); else sfx.point(v, beat.byWinner);
+        // The sour horn belongs to the beat that kills the ticket, not to beat 13. On the
+        // hero path those are seven beats apart, and the gap between them IS the scene.
+        if (refuted) sfx.loss(v);
+      }, beat.at));
+      timers.current.push(window.setTimeout(() => setSt(s => ({ ...s, headHot: false })), beat.at + 90));
+    });
     timers.current.push(window.setTimeout(() => {
       setSt(s => ({ ...s, phase: 'settled', headHot: false, ghost: false }));
       const v = voices.current!;
       v.stopCrowd();
-      // "nearly" is its own verdict, and it is the one the near-miss beat exists for
-      if (result.won) sfx.win(v);
-      else if (seenNearMiss) sfx.nearMiss(v);
-      else sfx.loss(v);
-    }, t + 120));
-  }, [st.l, turbo]);
+      // "nearly" is its own verdict, and it is the one the ghost touch exists for. A loss
+      // with no ghost has already sounded its horn at the beat it died.
+      if (plan.won) sfx.win(v);
+      else if (plan.ghostAt >= 0) sfx.nearMiss(v);
+    }, plan.totalMs + 120));
+  }, [st.l, turbo, src]);
 
-  const deal = useCallback(() => {
+  const deal = useCallback((next: Entropy = src, from?: number) => {
     clearTimers();
     voices.current!.stopCrowd();
     sfx.deal(voices.current!);
-    const { l, winnerSide } = dealBoard();
-    setSt({ l, winnerSide, phase: 'idle', propId: null, hover: null, result: null, beat: 0, headHot: false, ghost: false });
-  }, []);
+    dealNo.current = from ?? dealNo.current + 1;
+    const { l, winnerSide } = dealBoard(next, dealNo.current);
+    setSt({
+      l, winnerSide, phase: 'idle', propId: null, hover: null, result: null,
+      beat: 0, headHot: false, ghost: false, refuted: false,
+    });
+  }, [src]);
+
+  /** NEW REEL — leave the published reel for a fresh one drawn from the browser's CSPRNG.
+   *  This is the ONLY control that changes the meta line's provenance string, which is
+   *  why that string is derived from `src` rather than typed into the markup. */
+  const newReel = useCallback(() => {
+    const fresh = csprngEntropy();
+    setSrc(fresh);
+    deal(fresh, 0);
+  }, [deal]);
 
   // ---- pointer ------------------------------------------------------------------
   const toLamp = (e: React.PointerEvent): { c: number; r: number } | null => {
@@ -310,8 +317,17 @@ export function App() {
           ))}
         </svg>
       )}
-      {/* ui.md §2.6 exception 2 of 3: the meta readout is mono type, never lamps. */}
-      {!boot && <p className="meta">RTP 97% · MAX 96.03× · ENTROPY SEEDED KECCAK</p>}
+      {/* ui.md §2.6 exception 2 of 3: the meta readout is mono type, never lamps.
+          The provenance string is READ FROM THE SOURCE IN PLAY (ui.md §12's three
+          values), never typed — it was the literal `ENTROPY SEEDED KECCAK` while every
+          board and path came from crypto.getRandomValues, i.e. the one unverifiable
+          claim on the screen of a game whose whole argument is that you can check it. */}
+      {/* NOT `embedded ? 'CHAIN VRF' : ...`. Being inside an iframe is not evidence that a
+          chain decided anything: `useCasinoHost` is not mounted, so a hosted round is
+          still settled by `settleLocally` here. Naming the source that ACTUALLY decided
+          the round is the only form of this line that cannot become a lie by omission —
+          when the bridge is wired, it supplies the label and this keeps working. */}
+      {!boot && <p className="meta">RTP 97% · MAX 96.03× · ENTROPY {src.label}</p>}
       {/* The one line that says what this IS. A player who reads nothing else should
           still understand the inversion: the result is already public, the route is not. */}
       {!boot && <p className="pitch">THE SCORE IS FINAL · BET ON HOW IT HAPPENED</p>}
@@ -332,9 +348,19 @@ export function App() {
           >
             <span className="lamp" aria-hidden="true" />SOUND
           </button>
+          {/* The escape hatch from the published reel. Without it a seeded demo is a
+              fixed sequence a player can memorise, which is the one way a curated reel
+              could cost us the Fun criterion it exists to serve. */}
+          {!embedded && (
+            <button className="btn" onClick={newReel}>
+              <span className="lamp" aria-hidden="true" />NEW REEL
+            </button>
+          )}
         </div>
       )}
-      {!boot && !isEmbedded() && <p className="demo">DEMO · PLAY MONEY</p>}
+      {!boot && !embedded && (
+        <p className="demo">DEMO · PLAY MONEY{src.label === 'SEEDED KECCAK' ? ' · SEEDED REEL' : ''}</p>
+      )}
       {help && (
         /* ui.md §9.3 bans a splash, a modal on load and a tutorial, because Simplicity is
            25% and reads "no manual needed" — so this NEVER opens by itself. It is a
