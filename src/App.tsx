@@ -88,7 +88,12 @@ export function App() {
   // state change into an offscreen canvas; a beat blits that back and recomputes ONLY
   // the chart band. Redrawing all 4.1M device pixels per beat cost ~80ms — 12fps, which
   // is exactly what "not smooth" looks like.
-  const staticKey = `${st.l}|${st.winnerSide}|${st.phase}|${st.propId}|${st.hover}|${st.result?.won}|${st.result?.pathId}`;
+  // `refuted` belongs here because the MENU ROW is drawn into the static layer while the
+  // fence and the curve are drawn into the chart band. Without it the cache never
+  // invalidated on the beat the ticket died, so the board went half-red: the fence and
+  // the walk turned on time and the row naming that same ticket kept being blitted green
+  // from a stale bitmap. The composer was right; the cache key was not.
+  const staticKey = `${st.l}|${st.winnerSide}|${st.phase}|${st.propId}|${st.hover}|${st.refuted}|${st.result?.won}|${st.result?.pathId}`;
   const lastStaticKey = useRef('');
   const baseRef = useRef<HTMLCanvasElement | null>(null);
 
