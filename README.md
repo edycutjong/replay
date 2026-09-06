@@ -15,7 +15,7 @@ win, matching `C(13,1)`, and each pays the **96.03×** cap to the wei. Reproduce
 <br/>
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live-Play_it-06b6d4?style=for-the-badge)](https://replay.edycu.dev)
-[![Demo video](https://img.shields.io/badge/▶_Demo-90_seconds-e11d48?style=for-the-badge)](https://youtu.be/GQMg6t2vVBU)
+[![Demo video](https://img.shields.io/badge/▶_Demo-96_seconds-e11d48?style=for-the-badge)](https://youtu.be/GQMg6t2vVBU)
 [![Runbook](https://img.shields.io/badge/📋_Reviewer-Runbook-8b5cf6?style=for-the-badge)](./DEMO.md)
 [![SDK Feedback](https://img.shields.io/badge/🛠_SDK-FEEDBACK.md-3DFF6E?style=for-the-badge)](./FEEDBACK.md)
 [![Built for Chain Jam](https://img.shields.io/badge/Chain_Jam-Vol._1-FFA51E?style=for-the-badge)](https://jam.chain.wtf)
@@ -27,7 +27,7 @@ win, matching `C(13,1)`, and each pays the **96.03×** cap to the wei. Reproduce
 ![ICasinoGameV2](https://img.shields.io/badge/ICasinoGameV2-implemented-FFA51E?style=flat-square)
 ![RTP](https://img.shields.io/badge/declared_RTP-97%25-3DFF6E?style=flat-square)
 ![Max](https://img.shields.io/badge/max_payout-96.03×-FFA51E?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-72_passing-3DFF6E?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-255_passing-3DFF6E?style=flat-square)
 ![Coverage](https://img.shields.io/badge/game_logic_coverage-100%25-3DFF6E?style=flat-square)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/edycutjong/replay/actions/workflows/deploy.yml/badge.svg)](https://github.com/edycutjong/replay/actions/workflows/deploy.yml)
@@ -128,7 +128,7 @@ Three integration details worth checking:
 
 | Measure | Result | How it is checked |
 |---|---|---|
-| Tests | **72 passing** | `npm test` — rebuilds the entire paytable from the closed forms |
+| Tests | **255 passing** | `npm test` — the closed-form paytable plus render, audio, bridge and UI |
 | Game-logic coverage | **100%** | `npm run coverage` — statements, branches, functions, lines, thresholds enforced |
 | Ordering sweep | **4,082** across all five boards | `npm run bench` Block A, brute force vs. the closed forms |
 | Golden digests | **6 of 6** reproduced | combined `0x6ec73a1c…2720` over the 8,164-byte preimage |
@@ -161,8 +161,8 @@ runs standalone with no wallet and no host.
 For the reviewer, in under a minute:
 
 ```sh
-npm test          # 72 tests. Rebuilds the entire paytable from the closed forms.
-npm run coverage  # 100% on src/game/** — statements, branches, functions, lines
+npm test          # 255 tests. The closed-form paytable, render, audio, bridge and UI.
+npm run coverage  # 100% on src/** — statements, branches, functions, lines
 npm run spike     # 9 @chain/casino-sdk symbols exercised end to end
 npm run bench     # the 4,082-ordering sweep, the golden digests, four render thresholds
 npm run gates     # the nine mechanical ui.md gates
