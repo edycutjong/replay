@@ -459,6 +459,81 @@ describe('App — the cabinet switches, from a keyboard', () => {
   });
 });
 
+describe('App — the standalone purse', () => {
+  /** Standalone had no running total: round, verdict, round, verdict, nothing carried
+   *  forward. Inside the casino the HOST owns the money, so this must not appear there. */
+  const board = async () => {
+    const { container } = render(<App />);
+    await bootUp();
+    const canvas = container.querySelector('canvas')!;
+    mockCanvasBox(canvas, 1024, 608);
+    return canvas;
+  };
+  const purse = () => document.querySelector('.purse')!;
+  // strip the thousands separator FIRST: taking leading digits from "2,000" yields 2
+  const chips = () => Number(purse().textContent!.replace(/,/g, '').match(/^\s*(\d+)/)![1]);
+
+  it('opens at 2,000 chips', async () => {
+    await board();
+    expect(chips()).toBe(2000);
+  });
+
+  it('takes the stake when the bet is placed and pays the exact floored win', async () => {
+    const canvas = await board();
+    // FOUR DOWN on the 8-5 board pays 96.03x; deal 0 of the reel LOSES it (PATH 0410),
+    // so this asserts the losing side of the ledger against a known path.
+    fireEvent.keyDown(canvas, { key: 'End' });
+    fireEvent.keyDown(canvas, { key: 'Enter' });
+    expect(chips()).toBe(1980);                       // 2000 - 20 staked
+    await act(async () => { vi.advanceTimersByTime(20000); });
+    expect(chips()).toBe(1980);                       // lost: nothing comes back
+    expect(purse().querySelector('.down')).toHaveTextContent('20');
+  });
+
+  it('pays a winning ticket and shows the swing as net, not as the gross payout', async () => {
+    const canvas = await board();
+    // walk the reel to deal 4 (7-6), where FOUR DOWN at 21.34x WINS: PATH 0121.
+    for (let d = 0; d < 4; d++) {
+      fireEvent.keyDown(canvas, { key: 'End' });
+      fireEvent.keyDown(canvas, { key: 'Enter' });
+      await act(async () => { vi.advanceTimersByTime(20000); });
+      fireEvent.keyDown(canvas, { key: 'Enter' });    // settled -> deal again
+    }
+    const before = chips();
+    fireEvent.keyDown(canvas, { key: 'End' });
+    fireEvent.keyDown(canvas, { key: 'Enter' });
+    await act(async () => { vi.advanceTimersByTime(20000); });
+    // 20 x 21.34 = 426.8, floored to 426; net swing +406
+    expect(chips()).toBe(before - 20 + 426);
+    expect(purse().querySelector('.up')).toHaveTextContent('406');
+  });
+
+  it('offers a refill once the player is down, and restores the opening purse', async () => {
+    const canvas = await board();
+    expect(purse().querySelector('.refill')).toBeNull();   // nothing lost yet
+    fireEvent.keyDown(canvas, { key: 'End' });
+    fireEvent.keyDown(canvas, { key: 'Enter' });
+    await act(async () => { vi.advanceTimersByTime(20000); });
+    // deal 0's FOUR DOWN loses, so the purse is down and the control appears
+    expect(chips()).toBeLessThan(2000);
+    const refill = purse().querySelector('.refill')!;
+    expect(refill).toBeInTheDocument();
+    fireEvent.click(refill);
+    expect(chips()).toBe(2000);
+    expect(purse().querySelector('.refill')).toBeNull();
+  });
+
+  it('is absent once a host answers — the casino owns the money there', async () => {
+    const api = {
+      openSession: vi.fn(), revealOutcome: vi.fn(), submitAction: vi.fn(), cancelStuckRandomness: vi.fn(),
+    };
+    connectGameToHostMock.mockImplementationOnce(() => ({ promise: Promise.resolve(api), destroy: vi.fn() }));
+    render(<App />);
+    await bootUp();
+    expect(document.querySelector('.purse')).toBeNull();
+  });
+});
+
 describe('App — toggles', () => {
   it('TURBO flips its pressed state', async () => {
     render(<App />);

@@ -12,6 +12,23 @@ import { useCasinoHost } from './bridge/useCasinoHost';
 
 /** The board's own headline number, and the multiplier the facet quotes risk against. */
 const MAX_MULTIPLIER_X = 96.03;
+
+/**
+ * The standalone purse, in whole chips.
+ *
+ * Standalone had no running total at all: round, verdict, round, verdict, with nothing
+ * carried forward — no sense of being up or down and no reason for the tenth round to feel
+ * different from the first. Inside the casino the HOST owns the money and draws its own
+ * balance, so this exists only when no host answered; two balances on one screen is worse
+ * than none.
+ *
+ * Winnings are floored to whole chips. The payout is an exact rational and the stake is an
+ * integer, so the product is exact — flooring loses at most a fraction of one chip and
+ * keeps the purse an integer a player can add up by eye, which is the same argument the
+ * paytable makes about itself.
+ */
+const PURSE_START = 2_000;
+const STAKE = 20;
 import { composeWordmark, BOOT_MS } from './render/boot';
 import { Voices } from './audio/voices';
 import { sfx } from './audio/bindings';
@@ -62,6 +79,9 @@ export function App() {
   const dealNo = useRef(0);
   /** what we are waiting on between the bet and the first beat, in the bridged lane */
   const [waiting, setWaiting] = useState<'session' | 'vrf' | null>(null);
+  /** the standalone purse and the last round's swing, for the readout */
+  const [chips, setChips] = useState(PURSE_START);
+  const [swing, setSwing] = useState<number | null>(null);
 
   // ---- the sponsor integration ---------------------------------------------------
   // The hook is called unconditionally (rules of hooks) and resolves to nothing when
@@ -310,8 +330,20 @@ export function App() {
         });
       return;
     }
-    runReplay(settleLocally(st.l, propId, src, dealNo.current));
+    // STANDALONE: the reel decides, and the purse is ours to keep.
+    const result = settleLocally(st.l, propId, src, dealNo.current);
+    const row = boardMenu(st.l)[rowIndexForProp(boardMenu(st.l), propId)];
+    // exact rational x integer stake, floored: bigint throughout, no float in the money
+    const win = result.won ? Number((BigInt(STAKE) * row.payout.num) / row.payout.den) : 0;
+    setChips(c => c - STAKE);
+    setSwing(null);
+    runReplay(result, () => { setChips(c => c + win); setSwing(win - STAKE); });
   }, [bridged, host, wager, st.l, src, runReplay]);
+
+  /** Reset the purse. Offered whenever the player is DOWN, not only when they are broke:
+   *  at 97% RTP with a 96x tail the purse almost never actually busts, so a bust-gated
+   *  button is a control nobody ever sees. "I am down, start me over" is the real use. */
+  const refill = useCallback(() => { setChips(PURSE_START); setSwing(null); }, []);
 
   /**
    * The chain has written a settled `gameState`: render exactly that, then reveal.
@@ -609,6 +641,19 @@ export function App() {
           to parse and which the meta line already states properly as the entropy
           provenance. An honesty surface that nobody can read is decoration. */}
       {!boot && !bridged && <p className="demo">DEMO · PLAY MONEY</p>}
+      {/* The purse. Standalone only — see PURSE_START. `swing` is the last round's net, so
+          a win reads as what you actually gained rather than as what the ticket paid. */}
+      {!boot && !bridged && (
+        <p className="purse">
+          {chips.toLocaleString('en-US')}
+          {swing !== null && <span className={swing >= 0 ? 'up' : 'down'}>
+            {swing >= 0 ? ' +' : ' −'}{Math.abs(swing).toLocaleString('en-US')}
+          </span>}
+          {chips < PURSE_START && (
+            <button className="refill" onClick={refill}>REFILL</button>
+          )}
+        </p>
+      )}
       {help && (
         /* ui.md §9.3 bans a splash, a modal on load and a tutorial, because Simplicity is
            25% and reads "no manual needed" — so this NEVER opens by itself. It is a

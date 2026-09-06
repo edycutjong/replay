@@ -140,6 +140,27 @@ body {
 /* ui.md §2.6 exception 3 of 3 — the DEMO badge. Standalone mode is play money and says so. */
 .demo { right: calc(var(--lamp) * 4); top: calc(var(--lamp) * 0.4); color: var(--amber-2); pointer-events: none; }
 
+/* THE PURSE. Standalone only. Sits under the DEMO badge in the same top-right column, in
+   the mono layer for the same reason the meta readout is: it carries digits and a sign that
+   the 45-glyph lamp set has no business rendering. Green and red are the board's own two
+   verdict inks, so a swing reads the same way a settled row does. */
+.purse {
+  position: absolute; right: calc(var(--lamp) * 4); top: calc(var(--lamp) * 3.2);
+  font-size: max(7px, calc(var(--lamp) * 2.2)); line-height: 1; letter-spacing: 0.12em;
+  color: var(--amber-4); white-space: nowrap;
+  display: flex; align-items: center; gap: calc(var(--lamp) * 0.8);
+}
+.purse .up { color: #3DFF6E; }
+.purse .down { color: #E8322A; }
+.refill {
+  font: inherit; font-size: max(5px, calc(var(--lamp) * 1.3)); letter-spacing: 0.14em;
+  background: #0A0C13; color: var(--amber-3); border: 1px solid var(--bezel);
+  padding: calc(var(--lamp) * 0.4) calc(var(--lamp) * 1); cursor: pointer;
+}
+.refill:hover { color: var(--amber-4); border-color: #3a4757; }
+.refill:focus-visible { outline: 2px solid var(--amber-4); outline-offset: 2px; }
+@media (max-width: 620px) { .purse { font-size: 8px; } }
+
 /* The bridged lane's one waiting state: the bet has left the client and the VRF has not
    answered yet, so the chart has nothing to draw. Centred on the chart band rather than
    the cabinet, because that is the rectangle it is standing in for. */
