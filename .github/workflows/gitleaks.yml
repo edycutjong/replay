@@ -1,0 +1,23 @@
+name: gitleaks
+
+# The mechanical version of this system's hard rule: "before any public flip, scan
+# history for kitchen filenames and secrets." This repo flips private -> public at
+# submission, and fetch-depth 0 is what makes the scan cover the commits that flip
+# exposes rather than only the tip.
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # full history — the point is to scan the past
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
