@@ -11,13 +11,21 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Declared explicitly because the default token on a Dependabot pull_request is
+# read-only and scoped down: gitleaks-action lists the PR's commits, and without
+# pull-requests: read it dies on a 403 that looks like a scanner failure rather than a
+# permissions one. main was always green; only the bot's own PRs failed.
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0        # full history — the point is to scan the past
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
