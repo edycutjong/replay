@@ -51,7 +51,7 @@ describe('the hero path — the beat the product is built to deliver', () => {
     expect(plan.won).toBe(false);
     expect(plan.resolvedAt).toBe(5);
     expect(plan.ghostAt).toBe(6);
-    expect(plan.beats[6]).toMatchObject({ row: 2, ghost: true, ms: 500 });
+    expect(plan.beats[6]).toMatchObject({ row: 2, ghost: true, ms: 500, crowd: 0 });
     // 90ms is a dropped frame, not a ghost touch. This is the assertion that fails if the
     // caller ever stops producing the input tempo row 2 exists for.
     expect(plan.beats[6].ms).not.toBe(90);
@@ -115,6 +115,18 @@ describe('planReplay', () => {
     const plan = planReplay(unrank(HERO_RANK, HERO_L), HERO_L, 5, true);
     expect(plan.beats.every(b => b.ms === 55 && !b.ghost && b.row === 6)).toBe(true);
     expect(plan.totalMs).toBe(55 * BEATS);
+  });
+
+  it('TURBO still carries the real per-beat crowd level, not a flat one — the ghost touch stays silent even sped up', () => {
+    // Same hero path, timing collapsed. `row` is uniformly 6 under turbo (see above),
+    // but `crowd` is sourced from the real (non-turbo) tempo row regardless, so this
+    // sequence matches beat-for-beat what the non-turbo schedule produces for HERO_CURVE.
+    const plan = planReplay(unrank(HERO_RANK, HERO_L), HERO_L, 5, true);
+    expect(plan.beats.map(b => b.crowd)).toEqual([0, 1, 2, 1, 2, 2, 0, 0, 0, 0, 0, 0, 0]);
+    // beat 5 (index 5) is the death of the ticket — still a full crowd 2 swell, turbo or
+    // not — and beat 6 (index 6) is the ghost touch it fell to: silent, on schedule.
+    expect(plan.beats[5].crowd).toBe(2);
+    expect(plan.beats[6].crowd).toBe(0);
   });
 
   it('marks each beat with the side that scored it', () => {

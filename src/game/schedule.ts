@@ -109,6 +109,10 @@ export interface PlannedBeat {
   resolves: boolean;
   /** which `beatTempo` row fired, for the tests and the bench */
   row: 1 | 2 | 3 | 4 | 5 | 6;
+  /** `Beat.crowd` from the REAL (non-turbo) tempo row, always — turbo overrides `ms`,
+   *  `ghost` and `row` for speed, but the crowd is drama, not pacing, and the ghost
+   *  touch's silence is not something a sped-up replay should undo. */
+  crowd: 0 | 1 | 2;
 }
 
 export interface ReplayPlan {
@@ -136,14 +140,19 @@ export function planReplay(mask: number, l: number, propId: PropId, turbo: boole
   let t = 0;
   for (let i = 0; i < BEATS; i++) {
     const d = Math.abs(curve[i] - row);
+    // The real tempo row, computed regardless of turbo — turbo only ever overrides
+    // pacing (below). Without this, TURBO_BEAT_MS's synthetic row-6 stand-in had no
+    // `crowd` of its own, and the ghost touch's silence existed only in the schedule
+    // turbo never uses.
+    const tempo = beatTempo({
+      d,
+      resolvesTicket: i === resolvedAt,
+      alreadyResolved: i > resolvedAt,
+      reTouchesNearMiss: i === ghostAt,
+    });
     const beat = turbo
       ? { ms: TURBO_BEAT_MS, preHoldMs: 0, ghost: false, row: 6 as const }
-      : beatTempo({
-          d,
-          resolvesTicket: i === resolvedAt,
-          alreadyResolved: i > resolvedAt,
-          reTouchesNearMiss: i === ghostAt,
-        });
+      : tempo;
     beats.push({
       at: t + beat.preHoldMs,
       ms: beat.ms,
@@ -153,6 +162,7 @@ export function planReplay(mask: number, l: number, propId: PropId, turbo: boole
       byWinner: ((mask >> i) & 1) === 0,
       resolves: i === resolvedAt,
       row: beat.row,
+      crowd: tempo.crowd,
     });
     t += beat.ms;
   }

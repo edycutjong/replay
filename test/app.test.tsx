@@ -21,6 +21,8 @@ import { App } from '../src/App';
 import { BOOT_MS } from '../src/render/boot';
 import { FakeAudioContext } from './setup';
 import { sfx } from '../src/audio/bindings';
+import { Voices } from '../src/audio/voices';
+import { boardMenu } from '../src/game/menu';
 
 /** The bridge reaches the host through penpal, which needs a real host on the other end
  *  of the iframe; unmocked, `connection.promise` simply never settles. The default below
@@ -488,6 +490,87 @@ describe('App — toggles', () => {
     expect(btn).toHaveAttribute('aria-pressed', 'true');
     expect(() => fireEvent.click(btn)).not.toThrow();
     expect(btn).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
+describe('App — the score strike, the priced menu, and the honoured crowd', () => {
+  it("announces FIRST's winner and prices its menu the moment boot reveals the board, not before", async () => {
+    render(<App />);
+    const scoreStrike = vi.spyOn(sfx, 'scoreStrike');
+    const rowLand = vi.spyOn(sfx, 'rowLand');
+    expect(scoreStrike).not.toHaveBeenCalled(); // still behind the wordmark
+    expect(rowLand).not.toHaveBeenCalled();
+    await bootUp();
+    // deal 0 of the published reel is HOME 8 - AWAY 5 (src/App.tsx's own comment on FIRST)
+    expect(scoreStrike).toHaveBeenCalledTimes(1);
+    expect(scoreStrike).toHaveBeenCalledWith(expect.anything(), 'HOME');
+    await act(async () => { vi.advanceTimersByTime(400); }); // let every staggered tick land
+    const n = boardMenu(5).length;
+    expect(rowLand).toHaveBeenCalledTimes(n);
+    for (let i = 0; i < n; i++) expect(rowLand).toHaveBeenNthCalledWith(i + 1, expect.anything(), i);
+  });
+
+  it('deal() announces the new score and prices the new menu', async () => {
+    const { container } = render(<App />);
+    await bootUp();
+    const canvas = container.querySelector('canvas')!;
+    mockCanvasBox(canvas, 1024, 608);
+    fireEvent.pointerDown(canvas, { clientX: 100 * 4, clientY: 84 * 4 }); // settle deal 0
+    await act(async () => { vi.advanceTimersByTime(20000); });
+
+    const scoreStrike = vi.spyOn(sfx, 'scoreStrike');
+    const rowLand = vi.spyOn(sfx, 'rowLand');
+    fireEvent.pointerDown(canvas, { clientX: 0, clientY: 0 }); // deal 1: AWAY 7 - HOME 6
+    await act(async () => { vi.advanceTimersByTime(400); });
+    expect(scoreStrike).toHaveBeenCalledTimes(1);
+    expect(scoreStrike).toHaveBeenCalledWith(expect.anything(), 'AWAY');
+    const n = boardMenu(6).length;
+    expect(rowLand).toHaveBeenCalledTimes(n);
+  });
+
+  it('dealing again before the row-land run finishes cancels the stale ticks instead of stacking them', async () => {
+    render(<App />);
+    await bootUp();
+    const rowLand = vi.spyOn(sfx, 'rowLand');
+    const btn = screen.getByRole('button', { name: /NEW REEL/ });
+    fireEvent.click(btn); // deal A's run starts (up to 6 rows, 50ms apart)
+    // let deal A's own row-0 tick land (its 0ms delay fires on the very next tick queue),
+    // then isolate everything after that: if row A's LATER ticks (50ms, 100ms, …) survive
+    // deal B's clearTimers(), they will collide with deal B's own run and show up as a
+    // repeated row index below.
+    await act(async () => { vi.advanceTimersByTime(10); });
+    rowLand.mockClear();
+    fireEvent.click(btn); // deal B — clearTimers() must cancel whatever of A is still pending
+    await act(async () => { vi.advanceTimersByTime(1000); }); // let everything that survives fire
+    const indices = rowLand.mock.calls.map(call => call[1]);
+    expect(new Set(indices).size).toBe(indices.length); // no row index sounded twice
+    expect(indices.length).toBeGreaterThanOrEqual(4); // every board lists at least 4 rows
+  });
+
+  it("mutes the crowd on the ghost touch instead of driving it from distance — the hero path's beat 7, deal 3 of the published reel", async () => {
+    // Same hero path as the near-miss horn test above: the ghost touch sits at d=1, the
+    // loudest distance value on this curve, which is exactly why the bug it fixes had the
+    // crowd peak on the one beat that is supposed to be silent.
+    const setCrowd = vi.spyOn(Voices.prototype, 'setCrowd');
+    const { container } = render(<App />);
+    await bootUp();
+    fireEvent.click(screen.getByRole('button', { name: /TURBO/ })); // speed only
+    const canvas = container.querySelector('canvas')!;
+    mockCanvasBox(canvas, 1024, 608);
+
+    const settle = async (clientX: number, clientY: number) => {
+      fireEvent.pointerDown(canvas, { clientX, clientY });
+      await act(async () => { vi.advanceTimersByTime(13 * 55 + 200); });
+    };
+    const dealAgain = () => fireEvent.pointerDown(canvas, { clientX: 0, clientY: 0 });
+    for (let i = 0; i < 3; i++) { await settle(100 * 4, 84 * 4); dealAgain(); }
+
+    setCrowd.mockClear();
+    await settle(100 * 4, 124 * 4); // deal 3, FOUR DOWN — the hero ticket
+    // beat index 5 (0-based) is the ticket's death, still at full distance-driven crowd;
+    // beat index 6 is the ghost touch, muted regardless of its own distance.
+    expect(setCrowd).toHaveBeenNthCalledWith(6, 2, false);
+    expect(setCrowd).toHaveBeenNthCalledWith(7, 1, true);
   });
 });
 

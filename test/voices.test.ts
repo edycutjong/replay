@@ -101,12 +101,15 @@ describe('Voices — the three graphs', () => {
     expect(() => v.relay(900, 40)).not.toThrow();
   });
 
-  it('crowd starts, adjusts to distance (clamped both ends), and stops idempotently', () => {
+  it('crowd starts, adjusts to distance (clamped both ends), mutes on request, and stops idempotently', () => {
     const v = on();
     v.startCrowd();
     expect(() => v.startCrowd()).not.toThrow(); // second call is a no-op, not a second node
     v.setCrowd(0);
     v.setCrowd(20); // far beyond the clamp range on both gain and centre frequency
+    // `mute` overrides the distance-driven gain to zero — the ghost touch's own case,
+    // where d=1 would otherwise be one of the loudest values on the curve.
+    v.setCrowd(1, true);
     v.stopCrowd();
     expect(() => v.stopCrowd()).not.toThrow(); // stopping twice does not throw
   });

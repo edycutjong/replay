@@ -127,11 +127,14 @@ export class Voices {
     this.crowd = { src, filt, gain };
   }
 
-  /** `d` is the path's distance to the ticket line. */
-  setCrowd(d: number): void {
+  /** `d` is the path's distance to the ticket line. `mute` forces the gain to zero
+   *  regardless of `d` — the ghost touch sits at d=1, the loudest distance on the whole
+   *  curve, and the beat it belongs to is built to land in silence, not at the top of
+   *  this method's own range. */
+  setCrowd(d: number, mute = false): void {
     if (!this.ctx || !this.crowd) return;
     const t = this.ctx.currentTime;
-    const g = Math.max(0, Math.min(0.5, 0.5 - 0.09 * d));
+    const g = mute ? 0 : Math.max(0, Math.min(0.5, 0.5 - 0.09 * d));
     const centre = Math.max(420, Math.min(1150, 1150 - d * 120));
     this.crowd.gain.gain.setTargetAtTime(g, t, 0.08);
     this.crowd.filt.frequency.setTargetAtTime(centre, t, 0.08);

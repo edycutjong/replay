@@ -197,6 +197,21 @@ export function App() {
     return () => clearTimeout(t);
   }, []);
 
+  /** FIRST never passes through `deal()` — it is the initial state, not something
+   *  dealt — so it gets its own copy of the same "a board just appeared" sounds. Firing
+   *  them at mount would announce a score under the wordmark, before the board is even
+   *  on screen; tying it to `boot` flipping false lines the audio up with the same
+   *  instant the meta line and the menu itself are revealed (`!boot && <p className=
+   *  "meta">…`). `boot` only ever goes true -> false once, so this fires exactly once. */
+  useEffect(() => {
+    if (boot) return;
+    const v = voices.current!;
+    sfx.scoreStrike(v, FIRST.winnerSide);
+    boardMenu(FIRST.l).forEach((_, i) => {
+      timers.current.push(window.setTimeout(() => sfx.rowLand(v, i), 50 * i));
+    });
+  }, [boot]);
+
   const clearTimers = (): void => { timers.current.forEach(clearTimeout); timers.current = []; };
   useEffect(() => clearTimers, []);
 
@@ -231,8 +246,11 @@ export function App() {
         const refuted = beat.resolves && !plan.won;
         setSt(s => ({ ...s, beat: i + 1, headHot: true, ghost: beat.ghost, refuted: s.refuted || refuted }));
         const v = voices.current!;
-        // the crowd IS the proximity readout — gain and centre are driven by d
-        v.setCrowd(beat.d);
+        // the crowd IS the proximity readout — gain and centre are driven by d, unless
+        // tempo.ts's own crowd level for this beat is 0, which overrides d entirely.
+        // The ghost touch is d=1, the loudest distance on the curve, and it is the one
+        // beat in the round built to land in silence.
+        v.setCrowd(beat.d, beat.crowd === 0);
         if (i === 12) sfx.reconcile(v); else sfx.point(v, beat.byWinner);
         // The sour horn belongs to the beat that kills the ticket, not to beat 13. On the
         // hero path those are seven beats apart, and the gap between them IS the scene.
@@ -315,10 +333,21 @@ export function App() {
 
   const deal = useCallback((next: Entropy = src, from?: number) => {
     clearTimers();
-    voices.current!.stopCrowd();
-    sfx.deal(voices.current!);
+    const v = voices.current!;
+    v.stopCrowd();
+    sfx.deal(v);
     dealNo.current = from ?? dealNo.current + 1;
     const { l, winnerSide } = dealBoard(next, dealNo.current);
+    // the two scoreStrike pitches identify the sides for the rest of the round — the
+    // player hears who won before a single ticket is priced
+    sfx.scoreStrike(v, winnerSide);
+    // six ascending ticks price the menu, staggered so the run reads as a rising
+    // arpeggio rather than a chord. Scheduled through `timers` so a rapid re-deal's
+    // `clearTimers()` above cancels whatever of the previous board's run is still
+    // pending, rather than stacking two overlapping arpeggios.
+    boardMenu(l).forEach((_, i) => {
+      timers.current.push(window.setTimeout(() => sfx.rowLand(v, i), 50 * i));
+    });
     setSt({
       l, winnerSide, phase: 'idle', propId: null, hover: null, result: null,
       beat: 0, headHot: false, ghost: false, refuted: false,
