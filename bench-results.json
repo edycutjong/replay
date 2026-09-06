@@ -1,0 +1,65 @@
+{
+  "orderings": 4082,
+  "nearMiss": {
+    "count": 65,
+    "total": 1287
+  },
+  "menuRows": 25,
+  "maxPayout": "96.03",
+  "minProbability": "13/1287",
+  "rtp": "97%",
+  "digests": {
+    "perBoard": {
+      "7-6": "0x85208d480e19855cbd5d12a8a4c775d31ff84c844e837758e03ce91a94412f1d",
+      "8-5": "0x10362cf8ee51f141d1e1cfb0e6f55f95ef6ba49e1d8a6a18609bbb86e73ebee3",
+      "9-4": "0x28f0a0b8a9e6f3634ef8a71cdb21b829f141e3bd0be5ff530023808149969276",
+      "10-3": "0xbf8aeae3b82af2229f57465e0e712ae9931362c600797f2ee7f1bcaf09a17d39",
+      "11-2": "0x10e3e6506dce95bed16efc718d9f9734fd8d8302f9eb8711da32f291d97cde6c"
+    },
+    "combined": "0x6ec73a1c7693c6b1857369db886226d93e64c773bb61c50f6b8d2381d0832720"
+  },
+  "machine": {
+    "cpu": "Apple M1 Max",
+    "node": "v22.22.0",
+    "chromium": "chromium-1217"
+  },
+  "blockB": [
+    {
+      "row": "menu-reprice",
+      "n": 200,
+      "p50": 0.022,
+      "p95": 0.054,
+      "threshold": 1,
+      "unit": "ms",
+      "pass": true
+    },
+    {
+      "row": "cold-open",
+      "n": 40,
+      "p50": 61,
+      "p95": 100,
+      "threshold": 1200,
+      "unit": "ms",
+      "pass": true
+    },
+    {
+      "row": "beat-frame",
+      "n": 670,
+      "p50": 8.3,
+      "p95": 9.4,
+      "threshold": 20,
+      "unit": "ms",
+      "pass": true
+    },
+    {
+      "row": "turbo-round",
+      "n": 10,
+      "p50": 702,
+      "p95": 867,
+      "threshold": 1100,
+      "unit": "ms",
+      "pass": true
+    }
+  ],
+  "generated": "2026-09-06T05:33:24.224Z"
+}

@@ -13,7 +13,9 @@
     "coverage": "vitest run --coverage",
     "check-types": "tsc --noEmit",
     "spike": "tsx scripts/sdk-spike.ts",
-    "shipcheck": "node scripts/shipcheck.mjs"
+    "shipcheck": "node scripts/shipcheck.mjs",
+    "bench": "tsx scripts/bench.ts",
+    "gates": "node scripts/gates.mjs"
   },
   "dependencies": {
     "penpal": "^7.0.4",
@@ -28,6 +30,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
     "@vitest/coverage-v8": "^3.2.7",
+    "playwright": "^1.59.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
