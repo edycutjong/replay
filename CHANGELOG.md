@@ -1,3 +1,9 @@
+## [1.2.2](https://github.com/edycutjong/replay/compare/v1.2.1...v1.2.2) (2026-09-06)
+
+### Fixes
+
+* **a11y:** put a real space between the keycap and its label ([370d54f](https://github.com/edycutjong/replay/commit/370d54fe77a87f5930b30e6a96004f41fa4aadee))
+
 ## [1.2.1](https://github.com/edycutjong/replay/compare/v1.2.0...v1.2.1) (2026-09-06)
 
 ### Fixes
