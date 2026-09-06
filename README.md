@@ -15,6 +15,7 @@ win, matching `C(13,1)`, and each pays the **96.03×** cap to the wei. Reproduce
 <br/>
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live-Play_it-06b6d4?style=for-the-badge)](https://replay.edycu.dev)
+[![Demo video](https://img.shields.io/badge/▶_Demo-90_seconds-e11d48?style=for-the-badge)](https://youtu.be/GQMg6t2vVBU)
 [![Runbook](https://img.shields.io/badge/📋_Reviewer-Runbook-8b5cf6?style=for-the-badge)](./DEMO.md)
 [![SDK Feedback](https://img.shields.io/badge/🛠_SDK-FEEDBACK.md-3DFF6E?style=for-the-badge)](./FEEDBACK.md)
 [![Built for Chain Jam](https://img.shields.io/badge/Chain_Jam-Vol._1-FFA51E?style=for-the-badge)](https://jam.chain.wtf)
