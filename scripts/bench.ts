@@ -388,7 +388,10 @@ if (!SKIP_B) {
     `);
 
     // TURBO on — the P0 path, and the one a returning player actually uses.
-    await page.getByText('TURBO', { exact: true }).click();
+    // By ROLE, not by exact text: the button now prints its keyboard shortcut on a
+    // keycap beside the label, so its text content is "TTURBO" and an exact-text
+    // locator silently stops matching. The accessible name is the stable thing.
+    await page.getByRole('button', { name: /TURBO/ }).click();
 
     const beatFrames: number[] = [];
     const turboRounds: number[] = [];
