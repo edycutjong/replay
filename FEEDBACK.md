@@ -1,7 +1,7 @@
 # SDK feedback — @chain/casino-sdk v0.2.0
 
 **SEND-BY: 2026-09-13** · Chain Discord `discord.gg/3kpZHvvTq`
-**FILED:** *(not yet — this line carries the message link and UTC timestamp once posted)*
+**FILED:** 2026-09-06T15:48:56Z · https://discord.com/channels/1491086603463168060/1517301470528143431/1546185228857384990
 
 Findings from building [Replay](./README.md) against the casino SDK, in the order they cost
 us time. Every one is reproducible; four of them are one-line fixes.

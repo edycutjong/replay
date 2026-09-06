@@ -604,10 +604,11 @@ export function App() {
           </span>
         </div>
       )}
-      {/* The badge is about MONEY, so it is keyed to the lane that handles it. */}
-      {!boot && !bridged && (
-        <p className="demo">DEMO · PLAY MONEY{src.label === 'SEEDED KECCAK' ? ' · SEEDED REEL' : ''}</p>
-      )}
+      {/* The badge is about MONEY, so it is keyed to the lane that handles it. Two words,
+          not three: it used to append "· SEEDED REEL", which is jargon a player has no way
+          to parse and which the meta line already states properly as the entropy
+          provenance. An honesty surface that nobody can read is decoration. */}
+      {!boot && !bridged && <p className="demo">DEMO · PLAY MONEY</p>}
       {help && (
         /* ui.md §9.3 bans a splash, a modal on load and a tutorial, because Simplicity is
            25% and reads "no manual needed" — so this NEVER opens by itself. It is a

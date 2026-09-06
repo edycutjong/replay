@@ -108,7 +108,7 @@ describe('App — entropy provenance (standalone, not embedded)', () => {
     expect(screen.getByRole('button', { name: /NEW REEL/ })).toBeInTheDocument();
   });
 
-  it('NEW REEL switches the source and the label to BROWSER CSPRNG, and drops SEEDED REEL from the badge', async () => {
+  it('NEW REEL switches the source and the label to BROWSER CSPRNG; the badge is unaffected', async () => {
     render(<App />);
     await bootUp();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: /NEW REEL/ })); });
