@@ -94,6 +94,11 @@ export function App() {
 
   useEffect(() => {
     const c = cv.current;
+    // `<canvas ref={cv}>` below is unconditional — it is never behind `boot`, `help` or a
+    // phase check — so React has always attached this ref by the time a passive effect
+    // runs. Kept as a guard against a future conditional render around the canvas rather
+    // than deleted for coverage's sake, which is how that regression would go unnoticed.
+    /* v8 ignore next -- see above: unreachable while the canvas element is unconditional */
     if (!c) return;
     const ctx = c.getContext('2d', { alpha: false });
     if (!ctx) return;
@@ -105,6 +110,11 @@ export function App() {
     // column off the right edge — the one column the game is about. Measure the PARENT
     // (never the canvas, whose own style width is what we are about to set, which would
     // feed back into the next pitch) and centre via .cabinet's grid.
+    //
+    // The `?? c.clientWidth/clientHeight` fallback is the same class of guard as `!c`
+    // above: `cab` is the ref on `.cabinet`, this component's own root element, so it is
+    // never null when this effect can run. Left in for the same reason.
+    /* v8 ignore next 2 -- see above: unreachable while .cabinet is this component's root */
     const availW = cab.current?.clientWidth ?? c.clientWidth;
     const availH = cab.current?.clientHeight ?? c.clientHeight;
     const pick = geometry(availW, availH, WIDE_COLS, WIDE_ROWS, dpr);

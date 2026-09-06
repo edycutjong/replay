@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
 import { decodeGameState, propWon } from '../src/game/codec';
 import { unrank, walk } from '../src/game/unrank';
 import { c13 } from '../src/game/pascal';
@@ -11,9 +13,15 @@ import { c13 } from '../src/game/pascal';
  * ReplayGame contract running on the SDK's local simulator, captured by calling
  * onRandomness (a view) at chosen ranks. These are not hand-written fixtures; if the
  * contract's abi.encode layout and this decoder ever disagree, this fails.
+ *
+ * Resolved with node:path/node:url rather than `new URL(..., import.meta.url)` — the
+ * jsdom test environment (needed for the render and DOM suites elsewhere in this run)
+ * shadows the global `URL` with its own WHATWG implementation, and `fs.readFileSync`
+ * rejects the result with "must be of scheme file". Explicitly importing Node's own
+ * `fileURLToPath` sidesteps whichever `URL` happens to be ambient.
  */
 const FIXTURES: Array<{ l: number; prop: number; rank: number; gameState: string }> =
-  JSON.parse(readFileSync(new URL('../fixtures/gamestate.json', import.meta.url), 'utf8'));
+  JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../fixtures/gamestate.json'), 'utf8'));
 
 describe('decodeGameState against real contract output', () => {
   it('has fixtures spanning several boards and props', () => {

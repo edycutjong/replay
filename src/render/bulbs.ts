@@ -28,6 +28,10 @@ const HALO = [0, 0.1, 0.22, 0.44, 0.78];
 const REACH: Record<Ink, number> = { amber: 1, green: 1, red: 1, signal: 1.6 };
 
 const color = (ink: Ink, duty: number): string => {
+  // `color` is module-private and its one call site (makeSprites) only ever passes an
+  // Ink drawn from the fixed ['amber','green','red','signal'] loop below, so INK[ink] is
+  // never undefined through any reachable path — this guards a bad cast, not a real case.
+  /* v8 ignore next -- unreachable through the typed call site; see above */
   const e = INK[ink] ?? INK.amber;
   return duty >= 4 ? e.ramp[3] : e.ramp[Math.max(0, Math.min(3, duty - 1))];
 };
@@ -128,6 +132,11 @@ export class Field {
     const s = String(str).toUpperCase(), adv = ADVANCE * scale + track;
     for (let i = 0; i < s.length; i++) {
       const g = FONT[s[i]];
+      // FONT maps ' ' to a blank glyph, so `!g` is never true for a space in today's
+      // 45-glyph set — the `continue` here only matters if that entry is ever removed.
+      // Left in as a guard against exactly that regression rather than deleted for
+      // coverage's sake, which is how it would go unnoticed until the crash it prevents.
+      /* v8 ignore next -- see above: unreachable while FONT[' '] exists */
       if (!g) { if (s[i] !== ' ') throw new Error(`glyph not in the 45-set: ${JSON.stringify(s[i])}`); continue; }
       const ox = c + i * adv;
       for (let gy = 0; gy < GLYPH_H; gy++) for (let gx = 0; gx < GLYPH_W; gx++) {

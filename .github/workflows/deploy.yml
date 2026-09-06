@@ -37,8 +37,14 @@ jobs:
       - name: types
         run: npm run check-types
 
+      - name: lint
+        run: npm run lint
+
       - name: tests
-        run: npm test
+        # --coverage, not a bare run: the thresholds ARE the check. Four real defects
+        # shipped out of files the old src/game-only scope never looked at, so a floor
+        # that is only enforced on someone's laptop is the same floor that let them through.
+        run: npm run coverage
 
       # Block A only. It is deterministic integer arithmetic — the 4,082-ordering sweep,
       # the three closed forms, the RTP identity and the six golden digests — and gives
