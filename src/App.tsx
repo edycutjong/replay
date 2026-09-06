@@ -28,6 +28,15 @@ const FIRST = { l: 5, winnerSide: 'HOME' as const };
 
 export function App() {
   const cv = useRef<HTMLCanvasElement>(null);
+  /** the full viewport box — what the board is sized to FIT INTO. Measured here rather
+   *  than on the canvas's own parent, which is now .stage and shrink-wraps the canvas,
+   *  so reading it would make the board's size depend on the board's size. */
+  const cab = useRef<HTMLDivElement>(null);
+  /** the board's displayed box; carries --lamp, the DOM layer's unit of length */
+  const stage = useRef<HTMLDivElement>(null);
+  /** how far the board had to shrink to fit, 1 when it did not. The boot overlay is
+   *  positioned in DISPLAYED pixels and needs it. */
+  const fitRef = useRef(1);
   const geoRef = useRef<Geometry | null>(null);
   const spritesRef = useRef<ReturnType<typeof makeSprites> | null>(null);
   const timers = useRef<number[]>([]);
@@ -65,9 +74,8 @@ export function App() {
     // column off the right edge — the one column the game is about. Measure the PARENT
     // (never the canvas, whose own style width is what we are about to set, which would
     // feed back into the next pitch) and centre via .cabinet's grid.
-    const host = c.parentElement;
-    const availW = host?.clientWidth ?? c.clientWidth;
-    const availH = host?.clientHeight ?? c.clientHeight;
+    const availW = cab.current?.clientWidth ?? c.clientWidth;
+    const availH = cab.current?.clientHeight ?? c.clientHeight;
     const pick = geometry(availW, availH, WIDE_COLS, WIDE_ROWS, dpr);
     const resized = pick.w !== c.width || pick.h !== c.height;
     if (resized || !geoRef.current) {
@@ -79,8 +87,16 @@ export function App() {
       // element and the lamps came out ovals.
       const cssW = pick.w / dpr, cssH = pick.h / dpr;
       const fit = Math.min(1, availW / cssW, availH / cssH);
+      fitRef.current = fit;
       c.style.width = `${Math.round(cssW * fit)}px`;
       c.style.height = `${Math.round(cssH * fit)}px`;
+      // Hand the DOM layer the board's own unit. Every overlay offset and type size is
+      // expressed in lamps, so the mono readouts sit in the lamp bands they were
+      // designed for at every board size. They used to be percentages of the VIEWPORT,
+      // which meant one thing while the board filled the screen and another once it was
+      // letterboxed -- .pitch at "top: 3%" landed on the SCORE band and printed through
+      // the 8, and the controls printed over the rules line.
+      stage.current?.style.setProperty('--lamp', `${(pick.pitch / dpr) * fit}px`);
       // the board now IS the canvas, so it starts at the origin
       geoRef.current = { ...pick, x0: 0, y0: 0 };
       spritesRef.current = makeSprites(geoRef.current);
@@ -100,7 +116,7 @@ export function App() {
       lastStaticKey.current = '';
       // Hand the chrome overlay the EXACT box the bulb wordmark occupies, in CSS px, so
       // the two are superimposed rather than merely both centred.
-      const pcss = geo.pitch / dpr, x0 = geo.x0 / dpr, y0 = geo.y0 / dpr;
+      const pcss = (geo.pitch / dpr) * fitRef.current, x0 = 0, y0 = 0;
       setMarkBox({
         l: x0 + Math.round((WIDE_COLS - WORDMARK_LAMPS.w) / 2) * pcss,
         t: y0 + Math.round((WIDE_ROWS - WORDMARK_LAMPS.h) / 2) * pcss,
@@ -257,7 +273,13 @@ export function App() {
   // ---- the DOM copy: how the frame reaches a screen reader and a phone (ui.md §8.5) --
   const rows = boardMenu(st.l);
   return (
-    <div className="cabinet">
+    <div className="cabinet" ref={cab}>
+      {/* THE STAGE is exactly the board's displayed box, and every overlay below is its
+          child. They used to be children of .cabinet, i.e. of the whole viewport, which
+          was the same rectangle only while the board filled it — once the board became a
+          letterboxed box the percentage offsets stopped tracking the lamp bands and the
+          controls printed straight over the rules line. */}
+      <div className="stage" ref={stage}>
       <canvas
         ref={cv}
         className="board"
@@ -359,6 +381,7 @@ export function App() {
       )}
       <div className="crt" />
       <div className="vignette" />
+      </div>
       <p className="sr">
         Final score {st.winnerSide === 'HOME' ? 'HOME' : 'AWAY'} {13 - st.l},{' '}
         {st.winnerSide === 'HOME' ? 'AWAY' : 'HOME'} {st.l}. {rows[0].total.toLocaleString()} orderings

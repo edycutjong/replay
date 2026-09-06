@@ -25,6 +25,11 @@ body {
   display: grid; place-items: center;
   background: var(--void);
 }
+/* The stage IS the board's displayed box. It shrink-wraps the canvas, so every
+   absolutely-positioned overlay inside it resolves its percentages against the board
+   rather than against the viewport — which is what keeps the controls band on the lamp
+   controls band, and the scanlines on the glass instead of on the surrounding void. */
+.stage { position: relative; display: block; line-height: 0; }
 .board { display: block; max-width: 100%; max-height: 100%; }
 
 /* scanlines + vignette, composited once over the whole cabinet. Never load-bearing:
@@ -53,8 +58,10 @@ body {
    straight through the chart's envelope wedge — reported as overlapping text. The
    honesty surface belongs at the edge of the cabinet, not across the reveal. */
 .meta {
-  position: absolute; left: 3.2%; top: 3%;
-  font-size: clamp(7px, 0.72vw, 10px);
+  /* rows 0-3 of the 152-row board: the margin ABOVE the SCORE band, which starts at
+     row 4. In lamps, so it stays there whatever size the board is drawn at. */
+  position: absolute; left: calc(var(--lamp) * 4); top: calc(var(--lamp) * 0.4);
+  font-size: max(6px, calc(var(--lamp) * 1.6)); line-height: 1;
   color: var(--amber-2);
   white-space: nowrap;
   pointer-events: none;
@@ -64,34 +71,39 @@ body {
    bigger than its name, it is brighter (ui.md §2.2). These two DOM controls are the
    exception the canvas cannot own: a real button, focusable and hit-testable. */
 .demo {
-  position: absolute; font: inherit; font-size: clamp(7px, 0.72vw, 10px);
-  letter-spacing: 0.14em; background: none; border: 0; padding: 2px 4px;
+  position: absolute; font: inherit;
+  font-size: max(6px, calc(var(--lamp) * 1.6)); line-height: 1;
+  letter-spacing: 0.14em; background: none; border: 0; padding: 0;
 }
 
 /* THE CABINET BUTTONS. Reported as unclear whether anything was clickable, so these
    read as switches on the housing: a bezel-steel border, an indicator lamp, and a real
    focus ring. Bezel steel is the one non-emissive surface in the palette that is allowed
    to catch light (ui.md §2.1), which is exactly what a physical button is. */
+/* The CONTROLS band is lamp rows 132-139 of 152, i.e. 13 lamps up from the bottom
+   edge. The lamp layer owns this band once a round settles (NO PAY / CLICK ANYWHERE TO
+   DEAL AGAIN), which is why these buttons unmount then rather than printing over it. */
 .controls {
-  position: absolute; left: 3.2%; bottom: 12.8%;
-  display: flex; gap: 10px; align-items: center;
+  position: absolute; left: calc(var(--lamp) * 4); bottom: calc(var(--lamp) * 13);
+  display: flex; gap: calc(var(--lamp) * 1.6); align-items: center;
 }
 .btn {
-  font: inherit; font-size: clamp(7px, 0.72vw, 10px); letter-spacing: 0.14em;
-  display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: max(6px, calc(var(--lamp) * 1.5)); letter-spacing: 0.14em;
+  display: inline-flex; align-items: center; gap: calc(var(--lamp) * 0.8);
   background: #0A0C13; color: var(--amber-3);
-  border: 2px solid var(--bezel); padding: 4px 8px; cursor: pointer;
+  border: 1px solid var(--bezel);
+  padding: calc(var(--lamp) * 0.5) calc(var(--lamp) * 1.2); cursor: pointer;
 }
 .btn:hover { color: var(--amber-4); border-color: #3a4757; }
 .btn:focus-visible { outline: 2px solid var(--amber-4); outline-offset: 2px; }
 .btn .lamp {
-  width: 6px; height: 6px; border-radius: 50%;
+  width: calc(var(--lamp) * 1); height: calc(var(--lamp) * 1); border-radius: 50%;
   background: #12151C; box-shadow: none;
 }
 .btn[aria-pressed='true'] { color: #3DFF6E; border-color: #1C7A34; }
 .btn[aria-pressed='true'] .lamp { background: #3DFF6E; box-shadow: 0 0 6px #3DFF6E; }
 /* ui.md §2.6 exception 3 of 3 — the DEMO badge. Standalone mode is play money and says so. */
-.demo { right: 3.2%; top: 3%; color: var(--amber-2); pointer-events: none; }
+.demo { right: calc(var(--lamp) * 4); top: calc(var(--lamp) * 0.4); color: var(--amber-2); pointer-events: none; }
 
 /* Both readouts are `white-space: nowrap` at opposite edges of the same line, so on a
    narrow viewport they run into each other -- the phone cold open had ENTROPY SEEDED
@@ -119,11 +131,11 @@ body {
    odds; this one tells you the GAME — that the outcome is already known and what you are
    actually buying is the route it took. */
 .pitch {
-  position: absolute; left: 50%; transform: translateX(-50%); top: 3%;
-  font-size: clamp(7px, 0.78vw, 11px);
+  position: absolute; left: 50%; transform: translateX(-50%); top: calc(var(--lamp) * 0.4);
+  font-size: max(6px, calc(var(--lamp) * 1.6)); line-height: 1;
   color: var(--amber-3); white-space: nowrap; pointer-events: none;
 }
-@media (max-width: 900px) { .pitch { display: none; } }
+@media (max-width: 1100px) { .pitch { display: none; } }
 
 /* HOW IT WORKS. Opened by a button and never by itself — ui.md §9.3 bans a splash and a
    tutorial because "no manual needed" is a quarter of the score. A player who wants the

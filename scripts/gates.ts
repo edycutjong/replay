@@ -222,10 +222,27 @@ execSync('npm run build', { stdio: 'pipe' });
   // 12 deg of one of the four inks, or be achromatic. Bloom makes intermediate
   // LUMINANCES, never intermediate hues — that is the property being defended.
   {
-    // measured off the INK ramps in bulbs.ts, not guessed: amber #FFA51E -> 36 deg,
-    // green #3DFF6E -> 137, red #E8322A -> 3. signal is #FFFFFF, i.e. achromatic, and
-    // is caught by the chroma < 25 branch rather than by a hue.
-    const INK_HUES = [36, 137, 3];
+    // The FULL ramps from bulbs.ts, not just each ink's brightest stop. A duty-1 amber
+    // lamp is #3D1F04, which is hue 28 -- seven degrees off the #FFA51E the top of the
+    // ramp sits at -- and pixels where that dim lamp blends toward the socket field land
+    // near 22. Listing only the bright stop made the gate call the dim end of a
+    // perfectly legal ramp "off-ink"; it passed locally and failed on the CI runner,
+    // whose antialiasing puts slightly more mass in that bin. Hues are derived from the
+    // hex rather than written down, so this cannot drift from the renderer.
+    const INK_RAMPS = [
+      ['#3D1F04', '#8A4E08', '#D07F14', '#FFA51E', '#FFE9C2'],  // amber
+      ['#0A2B14', '#1C7A34', '#2FC754', '#3DFF6E', '#D6FFE3'],  // green
+      ['#2B0906', '#7A1A15', '#BF2822', '#E8322A', '#FFD5D2'],  // red
+      // signal is #FFFFFF at every stop -- achromatic, caught by the chroma branch
+    ];
+    const hueOf = (hex: string): number => {
+      const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn;
+      if (c === 0) return NaN;
+      const h = mx === r ? 60 * (((g - b) / c) % 6) : mx === g ? 60 * ((b - r) / c + 2) : 60 * ((r - g) / c + 4);
+      return (h + 360) % 360;
+    };
+    const INK_HUES = INK_RAMPS.flat().map(hueOf).filter(h => !Number.isNaN(h));
     const samples: number[] = [];
     let lit = 0, achromatic = 0;
     for (let f = 0; f < 20; f++) {
@@ -235,7 +252,7 @@ execSync('npm run build', { stdio: 'pipe' });
           const ctx = c.getContext('2d');
           const d = ctx.getImageData(0, 0, c.width, c.height).data;
           const out = [];
-          for (let i = 0; i < 1000; i++) {
+          for (let i = 0; i < 3000; i++) {
             const p = (Math.floor(Math.random() * (d.length / 4))) * 4;
             out.push([d[p], d[p + 1], d[p + 2]]);
           }
@@ -276,7 +293,7 @@ execSync('npm run build', { stdio: 'pipe' });
       .map(([k, n]) => `${k * BIN}-${k * BIN + BIN} deg ${(n / lit * 100).toFixed(1)}%`);
     const stray = samples.filter(h => !onInk(h)).length / lit * 100;
     offClusters.length === 0
-      ? pass('G2 ', `hue discipline: no off-ink cluster over 1% in 20,000 samples ${D}(${lit} lit, ${achromatic} achromatic, ${stray.toFixed(2)}% scattered stray)${Z}`)
+      ? pass('G2 ', `hue discipline: no off-ink cluster over 1% in 60,000 samples ${D}(${lit} lit, ${achromatic} achromatic, ${stray.toFixed(2)}% scattered stray)${Z}`)
       : fail('G2 ', `off-ink cluster(s) over 1% of the lit sample: ${offClusters.join(', ')}`);
   }
 
