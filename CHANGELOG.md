@@ -1,3 +1,9 @@
+## [1.3.0](https://github.com/edycutjong/replay/compare/v1.2.4...v1.3.0) (2026-09-06)
+
+### Game
+
+* **ui:** give the standalone demo a purse ([593cb04](https://github.com/edycutjong/replay/commit/593cb04d515b9dd72cce30a6c4c6ab4b6e541bbe))
+
 ## [1.2.4](https://github.com/edycutjong/replay/compare/v1.2.3...v1.2.4) (2026-09-06)
 
 ### Fixes
