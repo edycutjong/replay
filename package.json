@@ -15,7 +15,8 @@
     "spike": "tsx scripts/sdk-spike.ts",
     "shipcheck": "node scripts/shipcheck.mjs",
     "bench": "tsx scripts/bench.ts",
-    "gates": "node scripts/gates.mjs"
+    "gates": "tsx scripts/gates.ts",
+    "prebuild": "tsx scripts/favicon.ts"
   },
   "dependencies": {
     "penpal": "^7.0.4",

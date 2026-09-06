@@ -9,3 +9,4 @@ coverage/
 .vercel
 bench-results.json
 graphify-out/
+public/favicon.svg

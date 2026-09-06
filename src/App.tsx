@@ -58,11 +58,31 @@ export function App() {
     const ctx = c.getContext('2d', { alpha: false });
     if (!ctx) return;
     const dpr = window.devicePixelRatio || 1;
-    const resized = Math.round(c.clientWidth * dpr) !== c.width || Math.round(c.clientHeight * dpr) !== c.height;
+    // Size the backing store to the BOARD, not to the container, and let CSS shrink it
+    // if the board does not fit. Sizing it to the container clipped the board on every
+    // viewport under 768 CSS px: `geometry` floors the pitch at 3, so a 390 px phone
+    // got a 768 px board drawn into a 390 px canvas and lost the whole multiplier
+    // column off the right edge — the one column the game is about. Measure the PARENT
+    // (never the canvas, whose own style width is what we are about to set, which would
+    // feed back into the next pitch) and centre via .cabinet's grid.
+    const host = c.parentElement;
+    const availW = host?.clientWidth ?? c.clientWidth;
+    const availH = host?.clientHeight ?? c.clientHeight;
+    const pick = geometry(availW, availH, WIDE_COLS, WIDE_ROWS, dpr);
+    const resized = pick.w !== c.width || pick.h !== c.height;
     if (resized || !geoRef.current) {
-      c.width = Math.round(c.clientWidth * dpr);
-      c.height = Math.round(c.clientHeight * dpr);
-      geoRef.current = geometry(c.clientWidth, c.clientHeight, WIDE_COLS, WIDE_ROWS, dpr);
+      c.width = pick.w;
+      c.height = pick.h;
+      // Fit the board into the available box, preserving aspect. Letting max-width
+      // alone do it squashes the board: it caps the width and leaves the explicit
+      // height untouched, so a 390 px phone rendered a 768x456 board into a 390x456
+      // element and the lamps came out ovals.
+      const cssW = pick.w / dpr, cssH = pick.h / dpr;
+      const fit = Math.min(1, availW / cssW, availH / cssH);
+      c.style.width = `${Math.round(cssW * fit)}px`;
+      c.style.height = `${Math.round(cssH * fit)}px`;
+      // the board now IS the canvas, so it starts at the origin
+      geoRef.current = { ...pick, x0: 0, y0: 0 };
       spritesRef.current = makeSprites(geoRef.current);
       baseRef.current = document.createElement('canvas');
       baseRef.current.width = c.width; baseRef.current.height = c.height;
@@ -192,10 +212,13 @@ export function App() {
     const c = cv.current, geo = geoRef.current;
     if (!c || !geo) return null;
     const box = c.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
+    // Map through the DISPLAYED size rather than through devicePixelRatio. The two are
+    // the same only while the canvas renders at its intrinsic size; once CSS shrinks it
+    // to fit a narrow viewport, a dpr-based mapping puts every click in the wrong row.
+    const sx = c.width / box.width, sy = c.height / box.height;
     return {
-      c: Math.floor(((e.clientX - box.left) * dpr - geo.x0) / geo.pitch),
-      r: Math.floor(((e.clientY - box.top) * dpr - geo.y0) / geo.pitch),
+      c: Math.floor(((e.clientX - box.left) * sx - geo.x0) / geo.pitch),
+      r: Math.floor(((e.clientY - box.top) * sy - geo.y0) / geo.pitch),
     };
   };
 
