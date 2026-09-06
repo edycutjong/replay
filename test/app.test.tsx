@@ -394,6 +394,22 @@ describe('App — the cabinet switches, from a keyboard', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('prints the key card on the cabinet: every switch shows its key, plus the board keys', async () => {
+    await mount();
+    for (const [key, label] of [['T', /TURBO/], ['H', /HOW IT WORKS/], ['M', /SOUND/], ['N', /NEW REEL/]] as const) {
+      const btn = screen.getByRole('button', { name: label });
+      expect(btn.querySelector('kbd')).toHaveTextContent(key);
+      expect(btn).toHaveAttribute('aria-keyshortcuts', key.toLowerCase());
+    }
+    // the board's own keys sit in the same control row, for eyes only — the canvas
+    // label and aria-keyshortcuts already carry them to assistive tech
+    const legend = document.querySelector('.legend')!;
+    expect(legend).toHaveAttribute('aria-hidden', 'true');
+    expect(legend.textContent).toMatch(/CHOOSE/);
+    expect(legend.textContent).toMatch(/ENTER/);
+    expect(legend.textContent).toMatch(/BET/);
+  });
+
   it('the panel lists the keys, so they are discoverable without more chrome', async () => {
     await mount();
     fireEvent.keyDown(window, { key: 'h' });

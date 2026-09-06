@@ -104,6 +104,37 @@ body {
   width: calc(var(--lamp) * 1); height: calc(var(--lamp) * 1); border-radius: 50%;
   background: #12151C; box-shadow: none;
 }
+/* THE KEY CARD. Every control on this cabinet can be pressed or typed, and until now
+   only the pressing was visible: the keys existed and nothing on the screen said so.
+   ui.md 9.3 bans a splash, a modal on load and a tutorial -- Simplicity is a scored
+   criterion and reads "no manual needed" -- so this is not one. It is the legend printed
+   on a real cabinet next to its buttons, and it lives in the control row that is already
+   there rather than on a new surface. */
+.key {
+  font: inherit; font-size: max(5px, calc(var(--lamp) * 1.2)); line-height: 1;
+  letter-spacing: 0.08em;
+  display: inline-block; min-width: calc(var(--lamp) * 2.2); text-align: center;
+  padding: calc(var(--lamp) * 0.28) calc(var(--lamp) * 0.5);
+  margin-right: calc(var(--lamp) * 0.5);
+  color: var(--amber-4); background: #12151C; border: 1px solid var(--bezel);
+}
+.legend {
+  display: inline-flex; align-items: center; gap: calc(var(--lamp) * 0.4);
+  margin-left: calc(var(--lamp) * 1.2);
+  font-size: max(5px, calc(var(--lamp) * 1.3)); letter-spacing: 0.14em;
+  color: var(--amber-2); white-space: nowrap; pointer-events: none;
+}
+.legend .key { margin-right: 0; }
+.legend .dash { margin: 0 calc(var(--lamp) * -0.1); }
+/* A key card is for keyboards. A touch device has none, and a narrow board has no room
+   for it beside the lamp layer's own PICK A ROW ABOVE TO BET. */
+@media (max-width: 1180px), (hover: none) {
+  .legend { display: none; }
+}
+@media (max-width: 900px) {
+  .btn .key { display: none; }
+}
+
 .btn[aria-pressed='true'] { color: #3DFF6E; border-color: #1C7A34; }
 .btn[aria-pressed='true'] .lamp { background: #3DFF6E; box-shadow: 0 0 6px #3DFF6E; }
 /* ui.md §2.6 exception 3 of 3 — the DEMO badge. Standalone mode is play money and says so. */

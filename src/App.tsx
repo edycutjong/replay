@@ -533,10 +533,10 @@ export function App() {
       {!boot && st.phase !== 'settled' && (
         <div className="controls">
           <button className="btn" onClick={() => setTurbo(t => !t)} aria-pressed={turbo} title="Turbo (T)" aria-keyshortcuts="t">
-            <span className="lamp" aria-hidden="true" />TURBO
+            <span className="lamp" aria-hidden="true" /><kbd className="key" aria-hidden="true">T</kbd>TURBO
           </button>
           <button className="btn" onClick={() => setHelp(h => !h)} aria-pressed={help} aria-expanded={help} title="How it works (H)" aria-keyshortcuts="h">
-            <span className="lamp" aria-hidden="true" />HOW IT WORKS
+            <span className="lamp" aria-hidden="true" /><kbd className="key" aria-hidden="true">H</kbd>HOW IT WORKS
           </button>
           <button
             className="btn"
@@ -545,16 +545,27 @@ export function App() {
             title="Sound (M)"
             aria-keyshortcuts="m"
           >
-            <span className="lamp" aria-hidden="true" />SOUND
+            <span className="lamp" aria-hidden="true" /><kbd className="key" aria-hidden="true">M</kbd>SOUND
           </button>
           {/* The escape hatch from the published reel. Without it a seeded demo is a
               fixed sequence a player can memorise, which is the one way a curated reel
               could cost us the Fun criterion it exists to serve. */}
           {!bridged && (
             <button className="btn" onClick={newReel} title="New reel (N)" aria-keyshortcuts="n">
-              <span className="lamp" aria-hidden="true" />NEW REEL
+              <span className="lamp" aria-hidden="true" /><kbd className="key" aria-hidden="true">N</kbd>NEW REEL
             </button>
           )}
+          {/* The board's own keys. `aria-hidden` because the canvas already announces them
+              in its label and each switch carries an aria-keyshortcuts — this is the
+              printed key card on the cabinet, for eyes only. */}
+          <span className="legend" aria-hidden="true">
+            <kbd className="key">↑</kbd><kbd className="key">↓</kbd>
+            <span>CHOOSE</span>
+            <kbd className="key">1</kbd><span className="dash">–</span><kbd className="key">6</kbd>
+            <span>ROW</span>
+            <kbd className="key">ENTER</kbd>
+            <span>BET</span>
+          </span>
         </div>
       )}
       {/* The badge is about MONEY, so it is keyed to the lane that handles it. */}
