@@ -540,10 +540,10 @@ export function App() {
       {!boot && st.phase !== 'settled' && (
         <div className="controls">
           <button className="btn" onClick={() => setTurbo(t => !t)} aria-pressed={turbo} title="Turbo (T)" aria-keyshortcuts="t">
-            <span className="lamp" aria-hidden="true" /><kbd className="key">T</kbd>TURBO
+            <span className="lamp" aria-hidden="true" /><kbd className="key">T</kbd>{' '}TURBO
           </button>
           <button className="btn" onClick={() => setHelp(h => !h)} aria-pressed={help} aria-expanded={help} title="How it works (H)" aria-keyshortcuts="h">
-            <span className="lamp" aria-hidden="true" /><kbd className="key">H</kbd>HOW IT WORKS
+            <span className="lamp" aria-hidden="true" /><kbd className="key">H</kbd>{' '}HOW IT WORKS
           </button>
           <button
             className="btn"
@@ -552,14 +552,14 @@ export function App() {
             title="Sound (M)"
             aria-keyshortcuts="m"
           >
-            <span className="lamp" aria-hidden="true" /><kbd className="key">M</kbd>SOUND
+            <span className="lamp" aria-hidden="true" /><kbd className="key">M</kbd>{' '}SOUND
           </button>
           {/* The escape hatch from the published reel. Without it a seeded demo is a
               fixed sequence a player can memorise, which is the one way a curated reel
               could cost us the Fun criterion it exists to serve. */}
           {!bridged && (
             <button className="btn" onClick={newReel} title="New reel (N)" aria-keyshortcuts="n">
-              <span className="lamp" aria-hidden="true" /><kbd className="key">N</kbd>NEW REEL
+              <span className="lamp" aria-hidden="true" /><kbd className="key">N</kbd>{' '}NEW REEL
             </button>
           )}
           {/* The board's own keys. `aria-hidden` because the canvas already announces them
