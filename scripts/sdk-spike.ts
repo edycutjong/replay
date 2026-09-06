@@ -44,11 +44,11 @@ ok(`resolveManifestMetadata     locale=${meta.locale} name="${meta.name}"`);
 
 // ---- 4. assertSameOriginUrls — manifest and iframe must share an origin ----
 const sameOrigin = assertSameOriginUrls(
-  'https://replay-chain-jam.vercel.app/game.manifest.json',
-  'https://replay-chain-jam.vercel.app/',
+  'https://replay.edycu.dev/game.manifest.json',
+  'https://replay.edycu.dev/',
 );
 const crossOrigin = assertSameOriginUrls(
-  'https://replay-chain-jam.vercel.app/game.manifest.json',
+  'https://replay.edycu.dev/game.manifest.json',
   'https://example.com/',
 );
 if (!sameOrigin || crossOrigin) fail('assertSameOriginUrls did not discriminate origins');

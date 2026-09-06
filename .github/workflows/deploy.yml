@@ -1,0 +1,198 @@
+name: verify · release · deploy
+
+# One pipeline, three gates, in the only order that is honest: nothing is released that
+# has not been verified, and nothing is deployed that has not been released. The last
+# step re-reads the LIVE origin, because the jam's submission checker fetches the game
+# URL the instant an entry is submitted or edited and auto-rejects a page whose widget
+# tag is missing — so "did the deploy actually serve the right bytes" belongs in CI,
+# not in someone's memory on the final day.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PROD_URL: https://replay.edycu.dev
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: types
+        run: npm run check-types
+
+      - name: tests
+        run: npm test
+
+      # Block A only. It is deterministic integer arithmetic — the 4,082-ordering sweep,
+      # the three closed forms, the RTP identity and the six golden digests — and gives
+      # the same answer on every machine. Block B measures wall-clock render timings,
+      # which on a shared runner describe the runner more than the code, so it stays a
+      # local command where its thresholds are still enforced.
+      - name: bench — the paytable
+        run: npm run bench -- --block-a
+
+      - name: build
+        run: npm run build
+
+      - name: chromium
+        run: npx playwright install --with-deps chromium
+
+      # G12 needs a live origin, so it reports N/A here and runs for real after deploy.
+      - name: ui gates
+        run: npm run gates
+
+      - name: sdk spike
+        run: npm run spike
+
+  release:
+    name: release
+    needs: verify
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # tags, the release commit, the GitHub Release
+      issues: write
+      pull-requests: write
+    outputs:
+      published: ${{ steps.semantic.outputs.published }}
+      version: ${{ steps.semantic.outputs.version }}
+    steps:
+      # semantic-release reads the whole history to find the last tag and everything
+      # since it; a shallow clone makes it believe every commit is new.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: semantic-release
+        id: semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          npx semantic-release | tee release.log
+          # The release commit carries [skip ci], so this run is the only chance to tell
+          # the deploy job what shipped.
+          if grep -q 'Published release' release.log; then
+            v=$(grep -oE 'Published release [0-9]+\.[0-9]+\.[0-9]+' release.log | tail -1 | awk '{print $3}')
+            echo "published=true"  >> "$GITHUB_OUTPUT"
+            echo "version=$v"      >> "$GITHUB_OUTPUT"
+            echo "released $v"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+            echo "version="        >> "$GITHUB_OUTPUT"
+            echo "no releasable commits — deploying the current main unchanged"
+          fi
+
+  deploy:
+    name: deploy
+    needs: release
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://replay.edycu.dev
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      # main, not the triggering sha: when semantic-release bumped the version it wrote
+      # a commit that this workflow run cannot see, and deploying the trigger would ship
+      # the old version number in /version.json.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: vercel cli
+        run: npm i -g vercel@latest
+
+      - name: pull project settings
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: build
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: deploy
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+
+      # The four eligibility facts, read off the live response rather than assumed. Any
+      # one of them missing is an auto-reject on the jam site.
+      - name: verify the live origin
+        run: |
+          set -euo pipefail
+          echo "verifying $PROD_URL"
+          fail=0
+          get() { curl -sS --retry 6 --retry-delay 5 --retry-all-errors "$@"; }
+
+          hdrs=$(get -D- -o /dev/null "$PROD_URL/")
+          if grep -qi 'x-frame-options' <<<"$hdrs"; then
+            echo "FAIL  X-Frame-Options present — the gallery preview cannot embed this"; fail=1
+          else
+            echo "PASS  no X-Frame-Options"
+          fi
+
+          if grep -qiE 'content-security-policy:.*frame-ancestors[[:space:]]+\*' <<<"$hdrs"; then
+            echo "PASS  frame-ancestors *"
+          else
+            echo "FAIL  no explicit frame-ancestors *"; fail=1
+          fi
+
+          html=$(get "$PROD_URL/")
+          n=$(grep -o 'jam\.chain\.wtf/widget\.js' <<<"$html" | wc -l | tr -d ' ')
+          [ "$n" = "1" ] \
+            && echo "PASS  jam widget tag present exactly once in the RAW html" \
+            || { echo "FAIL  widget tag count is $n — missing is an AUTOMATIC REJECT"; fail=1; }
+
+          gid=$(get "$PROD_URL/game.manifest.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).gameId)}catch{console.log("unparseable")}})')
+          [ "$gid" = "ReplayGame" ] \
+            && echo "PASS  manifest served at the origin, gameId ReplayGame" \
+            || { echo "FAIL  manifest gameId is \"$gid\""; fail=1; }
+
+          echo "serving: $(get "$PROD_URL/version.json" | tr -d '\n')"
+          exit $fail
+
+      - name: summary
+        if: always()
+        run: |
+          {
+            echo "### Replay — deployed"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| origin | ${PROD_URL} |"
+            echo "| release | ${{ needs.release.outputs.published == 'true' && format('v{0}', needs.release.outputs.version) || 'no version change' }} |"
+            echo "| commit | \`${GITHUB_SHA:0:7}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

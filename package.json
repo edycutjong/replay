@@ -1,7 +1,7 @@
 {
   "name": "replay",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "See the final score first, then bet on how the game got there.",
   "license": "MIT",
@@ -16,7 +16,8 @@
     "shipcheck": "node scripts/shipcheck.mjs",
     "bench": "tsx scripts/bench.ts",
     "gates": "tsx scripts/gates.ts",
-    "prebuild": "tsx scripts/favicon.ts"
+    "prebuild": "tsx scripts/favicon.ts && tsx scripts/stamp-version.ts",
+    "release": "semantic-release"
   },
   "dependencies": {
     "penpal": "^7.0.4",
@@ -26,12 +27,19 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.9",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/node": "^24.12.4",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.4",
     "@vitest/coverage-v8": "^3.2.7",
+    "conventional-changelog-conventionalcommits": "^10.4.0",
     "playwright": "^1.59.1",
+    "semantic-release": "^25.0.9",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",

@@ -8,7 +8,7 @@
 
 <img src="./docs/hero.png" width="760" alt="Replay — the cold open">
 
-**[▶ PLAY IT](https://replay-chain-jam.vercel.app)** &nbsp;·&nbsp; [DEMO.md](./DEMO.md) &nbsp;·&nbsp; [FEEDBACK.md](./FEEDBACK.md)
+**[▶ PLAY IT](https://replay.edycu.dev)** &nbsp;·&nbsp; [DEMO.md](./DEMO.md) &nbsp;·&nbsp; [FEEDBACK.md](./FEEDBACK.md)
 
 ![Solidity](https://img.shields.io/badge/Solidity-0.8.30-05060B?style=flat-square)
 ![ICasinoGameV2](https://img.shields.io/badge/ICasinoGameV2-implemented-FFA51E?style=flat-square)

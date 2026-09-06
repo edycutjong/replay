@@ -9,7 +9,7 @@
  * than passing, because a check that silently passes when it did not run is worse than no
  * check (LESSONS R13).
  *
- *   node scripts/shipcheck.mjs [https://replay-chain-jam.vercel.app]
+ *   node scripts/shipcheck.mjs [https://replay.edycu.dev]
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';

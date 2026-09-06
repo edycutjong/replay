@@ -6,7 +6,7 @@ Every block below is **actual** output, not expected output. Re-run any of them.
 
 ## Path A — play it (30 seconds, no toolchain)
 
-Open **https://replay-chain-jam.vercel.app**
+Open **https://replay.edycu.dev**
 
 At 1,200 ms with zero interaction you are looking at the posted score, the full priced
 menu, and `13 OF 1,287 · 96.03×`. Click any row to buy that ticket; the 13 points replay

@@ -10,3 +10,4 @@ coverage/
 bench-results.json
 graphify-out/
 public/favicon.svg
+public/version.json

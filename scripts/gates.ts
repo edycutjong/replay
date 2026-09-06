@@ -10,7 +10,7 @@
  * thing it inspects is absent is worse than no gate.
  *
  * Pass a production URL to run G12 against the live surface:
- *   npm run gates -- https://replay-chain-jam.vercel.app
+ *   npm run gates -- https://replay.edycu.dev
  */
 import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
