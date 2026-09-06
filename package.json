@@ -1,7 +1,7 @@
 {
   "name": "replay",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "See the final score first, then bet on how the game got there.",
   "license": "MIT",

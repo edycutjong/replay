@@ -1,3 +1,9 @@
+## [1.2.1](https://github.com/edycutjong/replay/compare/v1.2.0...v1.2.1) (2026-09-06)
+
+### Fixes
+
+* **a11y:** announce the keycaps, and give the page a main landmark ([6dfe733](https://github.com/edycutjong/replay/commit/6dfe73320abacbc8459cdea693530ef7d81a1abb))
+
 ## [1.2.0](https://github.com/edycutjong/replay/compare/v1.1.0...v1.2.0) (2026-09-06)
 
 ### Game
