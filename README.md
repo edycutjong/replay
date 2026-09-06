@@ -28,8 +28,8 @@ win, matching `C(13,1)`, and each pays the **96.03×** cap to the wei. Reproduce
 ![Tests](https://img.shields.io/badge/tests-72_passing-3DFF6E?style=flat-square)
 ![Coverage](https://img.shields.io/badge/game_logic_coverage-100%25-3DFF6E?style=flat-square)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/edycutjong/replay-chain-jam/actions/workflows/deploy.yml/badge.svg)](https://github.com/edycutjong/replay-chain-jam/actions/workflows/deploy.yml)
-[![Release](https://img.shields.io/github/v/release/edycutjong/replay-chain-jam?sort=semver)](https://github.com/edycutjong/replay-chain-jam/releases/latest)
+[![CI](https://github.com/edycutjong/replay/actions/workflows/deploy.yml/badge.svg)](https://github.com/edycutjong/replay/actions/workflows/deploy.yml)
+[![Release](https://img.shields.io/github/v/release/edycutjong/replay?sort=semver)](https://github.com/edycutjong/replay/releases/latest)
 
 </div>
 
