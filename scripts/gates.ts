@@ -51,15 +51,27 @@ execSync('npm run build', { stdio: 'pipe' });
 }
 
 // ---------------------------------------------------------------------------
-// G4 — asset inventory. Zero authored image or audio files: every pixel is drawn
-// and every sound is synthesised. Exactly 1 is expected (the favicon export).
+// G4 — asset inventory. Zero AUTHORED image or audio files: every pixel is drawn by the
+// game's own renderer and every sound is synthesised. The rule is provenance, not a
+// count, so this is an allowlist: each entry names a file and why it cannot be drawn at
+// request time. Anything else in dist/ fails, which a bare `=== 1` could not catch if the
+// favicon were ever deleted and a stock PNG dropped in beside it.
 // ---------------------------------------------------------------------------
 {
+  const GENERATED: Record<string, string> = {
+    'dist/favicon.svg': 'generated at build time from the game\'s own Field/FONT',
+    // A social platform cannot run the renderer, so the one place a real file is
+    // unavoidable is the link preview. It is a screenshot of the live board at exactly
+    // 1200x630, so it cannot drift from the product it advertises.
+    'dist/og-image.png': 'screenshot of the live board, 1200x630, for og:image',
+  };
   const MEDIA = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.mp3', '.wav', '.ogg', '.m4a', '.svg']);
   const found = distFiles().filter(f => MEDIA.has(extname(f)));
-  found.length === 1
-    ? pass('G4 ', `asset inventory is exactly 1 — ${found[0]} (the build-time favicon)`)
-    : fail('G4 ', `asset inventory is ${found.length}, expected 1: ${found.join(', ') || 'none'}`);
+  const stray = found.filter(f => !(f in GENERATED));
+  const missing = Object.keys(GENERATED).filter(f => !found.includes(f));
+  stray.length === 0 && missing.length === 0
+    ? pass('G4 ', `asset inventory is exactly ${found.length}, all generated — ${found.map(f => `${f} (${GENERATED[f]})`).join(', ')}`)
+    : fail('G4 ', [stray.length ? `unlisted asset(s): ${stray.join(', ')}` : '', missing.length ? `missing: ${missing.join(', ')}` : ''].filter(Boolean).join(' · '));
 }
 
 // ---------------------------------------------------------------------------

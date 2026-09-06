@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Replay — see the score first, then bet on how it happened</title>
     <meta name="description" content="The final score of a 13-point game is revealed before the bet. You wager on which ordering of points produced it. 97% RTP, up to 96.03x." />
+
+    <!-- The link preview. This page is shared into Discord, the jam gallery and X, and
+         without these it unfurls as a bare URL: no image, no title, no description. The
+         card is the first thing almost everyone sees of this game.
+         og:image is EXACTLY 1200x630 and is a screenshot of the real board, so it cannot
+         drift from the product. og:site_name is what Discord prints above the title. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Replay" />
+    <meta property="og:title" content="Replay — the score first, then the order" />
+    <meta property="og:description" content="The result is public before you bet. You wager on which of the 1,287 orderings produced it." />
+    <meta property="og:url" content="https://replay.edycu.dev/" />
+    <meta property="og:image" content="https://replay.edycu.dev/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Replay board: a finished 13-point game and its priced menu of orderings." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Replay — the score first, then the order" />
+    <meta name="twitter:description" content="The result is public before you bet. You wager on which of the 1,287 orderings produced it." />
+    <meta name="twitter:image" content="https://replay.edycu.dev/og-image.png" />
+    <meta name="author" content="edycutjong" />
     <!-- Chain Jam entry widget. MUST stay in raw HTML — the submission check fetches this
          page and auto-rejects the entry if the tag is missing. Never React-injected. -->
     <script async src="https://jam.chain.wtf/widget.js"></script>
