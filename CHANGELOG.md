@@ -1,3 +1,14 @@
+## [1.3.1](https://github.com/edycutjong/replay/compare/v1.3.0...v1.3.1) (2026-09-06)
+
+### Fixes
+
+* correct a false claim in DEMO.md, trap focus in the panel, unbreak 390px ([170d8b3](https://github.com/edycutjong/replay/commit/170d8b3d7d822ede3d06848640a497846f6165eb))
+
+### Docs
+
+* correct README test count and demo video length ([3933d03](https://github.com/edycutjong/replay/commit/3933d03d90a3d16ad461ecc68822451c0d157673))
+* say what the player is wagering ([a914bba](https://github.com/edycutjong/replay/commit/a914bbabcb7c64d496c65fae5f31b4f39ab0a93e))
+
 ## [1.3.0](https://github.com/edycutjong/replay/compare/v1.2.4...v1.3.0) (2026-09-06)
 
 ### Game
