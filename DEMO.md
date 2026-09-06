@@ -17,6 +17,12 @@ the replay becomes a two-note pattern and you can hear a comeback without watchi
 
 ---
 
+**What you are spending.** The demo opens with 2,000 play chips and each ticket costs 20;
+the total sits under the `DEMO · PLAY MONEY` badge with the last round's net beside it.
+This purse is standalone-only — in Path D, where a host is present, it is absent because the
+host owns the balance there. If you see a purse and `ENTROPY CHAIN VRF` at the same time,
+that is a bug worth reporting.
+
 ## Path B — the paytable, from a second entry point (1 minute)
 
 ```sh

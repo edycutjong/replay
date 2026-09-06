@@ -193,6 +193,19 @@ comeback is audible with your eyes shut, and the crowd's gain tracks how far the
 from your row. Scrubbing the menu is a rising scale: pitch is odds, and 96.03× is the top
 note.
 
+**You open with 2,000 play chips and every ticket costs 20**, so a session accumulates
+rather than resetting each round — the swing beside the total is the round's net, not the
+ticket's gross, and `REFILL` restores the opening purse whenever you are down. Winnings
+floor to whole chips: the payout is an exact rational and the stake an integer, so the
+product is exact and only that last floor gives anything up. The purse exists **only in
+the standalone demo**. Inside the casino the host owns the balance and draws its own, and
+it clamps that display downward-only until the reveal finishes — a second number on screen
+would give the result away 13 beats early.
+
+Every control is reachable from a keyboard: arrows or `1`-`6` choose a ticket, `Enter` or
+`Space` bets it, and on a settled board either deals again. `T` turbo, `H` this panel,
+`M` sound, `N` a new reel. The cabinet prints each key on the switch it belongs to.
+
 ## 📐 Design
 
 One direction sentence: **a 1977 stadium bulb-matrix scoreboard, shot on VHS in 1986.**

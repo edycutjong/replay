@@ -691,6 +691,16 @@ export function App() {
             1.75× and the wild 96.03× have identical expected value. There is no trap bet here, and
             you can check the whole paytable by hand.
           </p>
+          <h2>YOU PLAY WITH {PURSE_START.toLocaleString()} CHIPS.</h2>
+          <p>
+            Every ticket costs <b>{STAKE}</b>, and a winning one pays its multiplier on that
+            stake — {formatPayout(rows[rows.length - 1])} on this board returns{' '}
+            <b>{Math.floor(STAKE * toNumber(rows[rows.length - 1].payout)).toLocaleString()}</b>.
+            Winnings are rounded down to whole chips. It is play money and the badge in the
+            corner says so; inside a real casino the house keeps the balance and this panel
+            would not be talking about it at all. <b>REFILL</b> puts you back to{' '}
+            {PURSE_START.toLocaleString()} any time you are down.
+          </p>
           <p className="fine">
             Then the 13 points replay one at a time, and you watch whether the line ever reaches
             your row. Turn SOUND on: the winner's point and the loser's point are different pitches,
@@ -712,6 +722,7 @@ export function App() {
         of the 13 points end this way. Pick one:{' '}
         {rows.map(r => `${r.prop}, ${r.count} of ${r.total}, pays ${formatPayout(r).replace('×', '')} times`).join('. ')}.
         Expected value is the same on every ticket. Return to player 97 percent.
+        {!bridged && ` You have ${chips.toLocaleString('en-US')} play chips; each ticket costs ${STAKE}.`}
         Use the arrow keys or the number keys to choose a ticket, then Enter to bet it.
         {st.result && ` Result: ${st.result.won ? 'won' : 'lost'}, path ${st.result.pathId}.`}
       </p>
