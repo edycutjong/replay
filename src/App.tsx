@@ -2,11 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { geometry, makeSprites, renderCanvas, lampRegion, drawSocketField, type Geometry } from './render/bulbs';
 import { composeStatic, composeChart, CHART_BAND, rowRect, rowIndexForProp, WIDE_COLS, WIDE_ROWS, type FrameState } from './render/coldOpen';
 import { boardMenu, formatPayout, toNumber } from './game/menu';
-import { type PropId } from './game/codec';
+import { encodeAbiParameters } from 'viem';
+import { type GameState, type PropId } from './game/codec';
 import { planReplay } from './game/schedule';
 import {
-  dealBoard, settleLocally, isEmbedded, reelEntropy, csprngEntropy, type Entropy,
+  dealBoard, settleLocally, reelEntropy, csprngEntropy, type Entropy,
 } from './bridge/demoHost';
+import { useCasinoHost } from './bridge/useCasinoHost';
+
+/** The board's own headline number, and the multiplier the facet quotes risk against. */
+const MAX_MULTIPLIER_X = 96.03;
 import { composeWordmark, BOOT_MS } from './render/boot';
 import { Voices } from './audio/voices';
 import { sfx } from './audio/bindings';
@@ -31,9 +36,6 @@ const REEL = reelEntropy();
 const FIRST = dealBoard(REEL, 0);
 
 export function App() {
-  /** Measured once: whether we are inside a host iframe. Read every render before, which
-   *  made a same-origin `window.top` access part of the render path for no gain. */
-  const embedded = useRef(isEmbedded()).current;
   const cv = useRef<HTMLCanvasElement>(null);
   /** the full viewport box — what the board is sized to FIT INTO. Measured here rather
    *  than on the canvas's own parent, which is now .stage and shrink-wraps the canvas,
@@ -58,6 +60,24 @@ export function App() {
    *  only thing that changes the meta line's provenance string. */
   const [src, setSrc] = useState<Entropy>(() => REEL);
   const dealNo = useRef(0);
+  /** what we are waiting on between the bet and the first beat, in the bridged lane */
+  const [waiting, setWaiting] = useState<'session' | 'vrf' | null>(null);
+
+  // ---- the sponsor integration ---------------------------------------------------
+  // The hook is called unconditionally (rules of hooks) and resolves to nothing when
+  // there is no host, which is what makes `bridged` mean "a host actually answered"
+  // rather than "we are in an iframe". Those are different claims, and the second one
+  // was standing in for the first: this component never mounted the bridge at all, so a
+  // hosted round was still being decided by browser entropy in `settleLocally` while the
+  // page hid its PLAY MONEY badge.
+  const host = useCasinoHost(MAX_MULTIPLIER_X);
+  const bridged = host.hostApi !== null;
+
+  /** One token, clamped to whatever the facet's live risk limits allow this bet to be. */
+  const wager = (() => {
+    const unit = 10n ** BigInt(host.snapshot?.token?.decimals ?? 18);
+    return host.maxWager !== undefined && host.maxWager < unit ? host.maxWager : unit;
+  })();
   const [st, setSt] = useState<FrameState>({
     ...FIRST, phase: 'idle', propId: null, hover: null, result: null,
     beat: 0, headHot: false, ghost: false, refuted: false,
@@ -166,13 +186,20 @@ export function App() {
   useEffect(() => clearTimers, []);
 
   // ---- the round ----------------------------------------------------------------
-  const buy = useCallback((propId: PropId) => {
-    const result = settleLocally(st.l, propId, src, dealNo.current);
+  /**
+   * Walk one settled round. The `result` is the ONLY input: standalone hands it what
+   * `settleLocally` computed, and the hosted lane hands it what the CHAIN wrote into
+   * `gameState`. Neither the tempo nor the drawing can tell the difference, which is the
+   * point — recomputing a hosted outcome client-side is the defect that capped Overhang
+   * under LESSONS R11, so there is exactly one renderer and it never decides anything.
+   */
+  const runReplay = useCallback((result: GameState, onSettled?: () => void) => {
+    const propId = result.propId;
     // The whole schedule up front, from the mask, so tempo is a function of geometry
     // rather than something the animation decides as it goes (ui.md §6.4). This used to
     // be forty lines inline here, which is precisely why it was never tested and why the
     // ghost touch was unreachable for four of the six props — see src/game/schedule.ts.
-    const plan = planReplay(result.mask, st.l, propId, turbo);
+    const plan = planReplay(result.mask, result.l, propId, turbo);
 
     setSt(s => ({
       ...s, phase: 'replay', propId, result, beat: 0, headHot: false, ghost: false, refuted: false,
@@ -206,8 +233,70 @@ export function App() {
       // with no ghost has already sounded its horn at the beat it died.
       if (plan.won) sfx.win(v);
       else if (plan.ghostAt >= 0) sfx.nearMiss(v);
+      // The host clamps its balance displays downward-only until this fires, so that the
+      // top bar cannot spoil a 13-beat reveal. It has to run at BOTH tempos — forgetting
+      // it on the TURBO path is the easy bug, and TURBO is inside `plan` already.
+      onSettled?.();
     }, plan.totalMs + 120));
-  }, [st.l, turbo, src]);
+  }, [turbo]);
+
+  /**
+   * Place the bet. Two lanes, one renderer.
+   *
+   * BRIDGED: the chain settles it. `gameData` is `abi.encode(uint8 l, uint8 propId)` —
+   * the board and the prop are the BET, and the only thing the VRF decides is which of
+   * the C(13,l) orderings actually happened. The replay does not start here; it starts
+   * when `gameState` comes back through the snapshot, in the effect below.
+   *
+   * STANDALONE: `settleLocally` decides, from the reel. This is the only place the
+   * TypeScript unrank is ever allowed to pick an outcome.
+   */
+  const buy = useCallback((propId: PropId) => {
+    if (bridged) {
+      const gameData = encodeAbiParameters(
+        [{ type: 'uint8' }, { type: 'uint8' }],
+        [st.l, propId],
+      );
+      setSt(s => ({
+        ...s, phase: 'replay', propId, result: null, beat: 0, headHot: false, ghost: false, refuted: false,
+      }));
+      clearTimers();
+      const v = voices.current!;
+      sfx.betLock(v); sfx.ticketTear(v);
+      setWaiting('session');
+      void host.openSession(wager.toString(), gameData)
+        .then(key => {
+          if (key) { setWaiting('vrf'); return; }
+          // the host refused the session: give the board back rather than hanging on it
+          setWaiting(null);
+          setSt(s => ({ ...s, phase: 'idle', propId: null }));
+        })
+        .catch(() => {
+          setWaiting(null);
+          setSt(s => ({ ...s, phase: 'idle', propId: null }));
+        });
+      return;
+    }
+    runReplay(settleLocally(st.l, propId, src, dealNo.current));
+  }, [bridged, host, wager, st.l, src, runReplay]);
+
+  /**
+   * The chain has written a settled `gameState`: render exactly that, then reveal.
+   *
+   * Keyed on the SESSION ID, not on the effect's dependencies. `useCasinoHost` returns a
+   * fresh object literal every render, so `host` changes identity on every render and any
+   * dependency list containing it re-runs constantly — which restarted the replay from
+   * beat 0 forever and meant a hosted round never reached `settled` at all. Guarding on
+   * the id makes re-entry harmless whatever the deps do.
+   */
+  const startedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const p = host.pending;
+    if (!p || startedRef.current === p.sessionId) return;
+    startedRef.current = p.sessionId;
+    setWaiting(null);
+    runReplay(p.state, () => host.reveal(p.sessionId));
+  }, [host.pending, host, runReplay]);
 
   const deal = useCallback((next: Entropy = src, from?: number) => {
     clearTimers();
@@ -322,12 +411,17 @@ export function App() {
           values), never typed — it was the literal `ENTROPY SEEDED KECCAK` while every
           board and path came from crypto.getRandomValues, i.e. the one unverifiable
           claim on the screen of a game whose whole argument is that you can check it. */}
-      {/* NOT `embedded ? 'CHAIN VRF' : ...`. Being inside an iframe is not evidence that a
-          chain decided anything: `useCasinoHost` is not mounted, so a hosted round is
-          still settled by `settleLocally` here. Naming the source that ACTUALLY decided
-          the round is the only form of this line that cannot become a lie by omission —
-          when the bridge is wired, it supplies the label and this keeps working. */}
-      {!boot && <p className="meta">RTP 97% · MAX 96.03× · ENTROPY {src.label}</p>}
+      {/* NOT `embedded ? ...`. Being inside an iframe is not evidence that a chain decided
+          anything — `bridged` means a host actually answered the penpal handshake, and
+          only then is CHAIN VRF a true statement about where this round's 32 bytes came
+          from. While the bridge was unmounted these were the same condition, and the page
+          made the stronger claim on the weaker evidence. */}
+      {!boot && <p className="meta">RTP 97% · MAX 96.03× · ENTROPY {bridged ? 'CHAIN VRF' : src.label}</p>}
+      {/* What the round is waiting on, in the player's words. A bet that has left the
+          client and not yet come back is the one moment the board has nothing to draw. */}
+      {waiting && (
+        <p className="wait">{waiting === 'session' ? 'OPENING SESSION' : 'WAITING FOR VRF'}</p>
+      )}
       {/* The one line that says what this IS. A player who reads nothing else should
           still understand the inversion: the result is already public, the route is not. */}
       {!boot && <p className="pitch">THE SCORE IS FINAL · BET ON HOW IT HAPPENED</p>}
@@ -351,14 +445,15 @@ export function App() {
           {/* The escape hatch from the published reel. Without it a seeded demo is a
               fixed sequence a player can memorise, which is the one way a curated reel
               could cost us the Fun criterion it exists to serve. */}
-          {!embedded && (
+          {!bridged && (
             <button className="btn" onClick={newReel}>
               <span className="lamp" aria-hidden="true" />NEW REEL
             </button>
           )}
         </div>
       )}
-      {!boot && !embedded && (
+      {/* The badge is about MONEY, so it is keyed to the lane that handles it. */}
+      {!boot && !bridged && (
         <p className="demo">DEMO · PLAY MONEY{src.label === 'SEEDED KECCAK' ? ' · SEEDED REEL' : ''}</p>
       )}
       {help && (

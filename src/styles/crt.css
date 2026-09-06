@@ -105,6 +105,17 @@ body {
 /* ui.md §2.6 exception 3 of 3 — the DEMO badge. Standalone mode is play money and says so. */
 .demo { right: calc(var(--lamp) * 4); top: calc(var(--lamp) * 0.4); color: var(--amber-2); pointer-events: none; }
 
+/* The bridged lane's one waiting state: the bet has left the client and the VRF has not
+   answered yet, so the chart has nothing to draw. Centred on the chart band rather than
+   the cabinet, because that is the rectangle it is standing in for. */
+.wait {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  top: calc(var(--lamp) * 40);
+  font-size: max(6px, calc(var(--lamp) * 2)); line-height: 1; letter-spacing: 0.14em;
+  color: var(--amber-3);
+  white-space: nowrap; pointer-events: none;
+}
+
 /* Both readouts are `white-space: nowrap` at opposite edges of the same line, so on a
    narrow viewport they run into each other -- the phone cold open had ENTROPY SEEDED
    KECCAK printing straight through the DEMO badge. Tightening the tracking is what
