@@ -283,6 +283,87 @@ describe('App — the bridged betting lane', () => {
   });
 });
 
+describe('App — the board from a keyboard', () => {
+  /** The board is the page's primary control and answered only to a pointer: every ticket
+   *  on it was unreachable without a mouse, and the canvas was not even in the tab order.
+   *  These cover the three things a pointer can do, done with keys. */
+  const board = async () => {
+    const { container } = render(<App />);
+    await bootUp();
+    const canvas = container.querySelector('canvas')!;
+    mockCanvasBox(canvas, 1024, 608);
+    return canvas;
+  };
+  const selected = () => (screen.getByRole('application') as HTMLElement);
+
+  it('is focusable and describes its own controls', async () => {
+    const canvas = await board();
+    expect(canvas).toHaveAttribute('tabindex', '0');
+    expect(canvas).toHaveAccessibleName(/Arrow keys choose a ticket/);
+    expect(selected()).toBe(canvas);
+  });
+
+  it('ArrowDown enters the menu at the top and ArrowUp enters it at the bottom', async () => {
+    const canvas = await board();
+    fireEvent.keyDown(canvas, { key: 'ArrowDown' });
+    expect(canvas.style.cursor).toBe('pointer');          // idle + a row selected
+    // walking down past the end clamps rather than wrapping onto row 0
+    for (let i = 0; i < 12; i++) fireEvent.keyDown(canvas, { key: 'ArrowDown' });
+    fireEvent.keyDown(canvas, { key: 'Enter' });
+    expect(screen.getByText(/Result: (won|lost), path \d+\./)).toBeInTheDocument();
+
+    cleanup();
+    const c2 = await board();
+    fireEvent.keyDown(c2, { key: 'ArrowUp' });            // from nothing -> the LAST row
+    for (let i = 0; i < 12; i++) fireEvent.keyDown(c2, { key: 'ArrowUp' });  // clamps at 0
+    fireEvent.keyDown(c2, { key: ' ' });                  // Space bets too
+    expect(screen.getByText(/Result: (won|lost), path \d+\./)).toBeInTheDocument();
+  });
+
+  it('Home and End jump to the ends of the menu', async () => {
+    const canvas = await board();
+    fireEvent.keyDown(canvas, { key: 'End' });
+    expect(canvas.style.cursor).toBe('pointer');
+    fireEvent.keyDown(canvas, { key: 'Home' });
+    fireEvent.keyDown(canvas, { key: 'Home' });           // already there: no re-tick
+    expect(canvas.style.cursor).toBe('pointer');
+  });
+
+  it('number keys jump to a row, and a row this board does not have is ignored', async () => {
+    const canvas = await board();
+    fireEvent.keyDown(canvas, { key: '3' });
+    expect(canvas.style.cursor).toBe('pointer');
+    cleanup();
+    const c2 = await board();
+    fireEvent.keyDown(c2, { key: '9' });                  // the 8-5 board lists six rows
+    expect(c2.style.cursor).toBe('default');              // nothing selected
+    fireEvent.keyDown(c2, { key: 'Enter' });              // so Enter is not a bet
+    expect(screen.queryByText(/Result:/)).not.toBeInTheDocument();
+  });
+
+  it('ignores a key it has no meaning for', async () => {
+    const canvas = await board();
+    fireEvent.keyDown(canvas, { key: 'q' });
+    expect(canvas.style.cursor).toBe('default');
+    expect(screen.queryByText(/Result:/)).not.toBeInTheDocument();
+  });
+
+  it('takes no instruction mid-replay, and deals again from a settled board', async () => {
+    const canvas = await board();
+    fireEvent.keyDown(canvas, { key: 'ArrowDown' });
+    fireEvent.keyDown(canvas, { key: 'Enter' });
+    expect(screen.getByText(/Result:/)).toBeInTheDocument();
+
+    fireEvent.keyDown(canvas, { key: 'ArrowDown' });      // mid-replay: no effect
+    fireEvent.keyDown(canvas, { key: 'Enter' });
+    expect(screen.getByText(/Result:/)).toBeInTheDocument();
+
+    await act(async () => { vi.advanceTimersByTime(20000); });
+    fireEvent.keyDown(canvas, { key: 'Enter' });          // settled -> deal again
+    expect(screen.queryByText(/Result:/)).not.toBeInTheDocument();
+  });
+});
+
 describe('App — toggles', () => {
   it('TURBO flips its pressed state', async () => {
     render(<App />);

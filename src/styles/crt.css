@@ -96,6 +96,10 @@ body {
 }
 .btn:hover { color: var(--amber-4); border-color: #3a4757; }
 .btn:focus-visible { outline: 2px solid var(--amber-4); outline-offset: 2px; }
+/* The board is focusable now, so it needs the same ring the cabinet buttons use. Inset
+   rather than offset: an outline outside a letterboxed canvas would sit in the void
+   around the board instead of on it. */
+.board:focus-visible { outline: 2px solid var(--amber-4); outline-offset: -2px; }
 .btn .lamp {
   width: calc(var(--lamp) * 1); height: calc(var(--lamp) * 1); border-radius: 50%;
   background: #12151C; box-shadow: none;

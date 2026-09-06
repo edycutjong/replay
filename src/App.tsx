@@ -366,14 +366,70 @@ export function App() {
     });
   };
 
+  /** Which ticket is printed on menu row `i` — the menu's order is the printed order,
+   *  not the propId order, so this is a lookup rather than an index. */
+  const propAtRow = (i: number): PropId | undefined =>
+    ([0, 1, 2, 3, 4, 5] as PropId[]).find(p => rowIndexForProp(boardMenu(st.l), p) === i);
+
   const onDown = (e: React.PointerEvent): void => {
     if (st.phase === 'settled') { deal(); return; }
     if (st.phase !== 'idle') return;
     const i = hitRow(e);
     if (i === null) return;
-    const rows = boardMenu(st.l);
-    const propId = ([0, 1, 2, 3, 4, 5] as PropId[]).find(p => rowIndexForProp(rows, p) === i);
+    const propId = propAtRow(i);
     if (propId !== undefined) buy(propId);
+  };
+
+  /** Move the selection and sound the focus tick, so arrowing the menu is the same rising
+   *  scale that scrubbing it with a pointer is — pitch IS odds, whichever way you got here. */
+  const focusRow = (i: number): void => {
+    if (i === st.hover) return;
+    sfx.focus(voices.current!, toNumber(boardMenu(st.l)[i].payout));
+    setSt(s => ({ ...s, hover: i }));
+  };
+
+  /**
+   * The board is a control, not a picture, and until now it answered only to a pointer:
+   * every ticket on it was unreachable from a keyboard, and the canvas was not even in
+   * the tab order. Arrow keys walk the menu, 1-6 jump straight to a row, Enter or Space
+   * bets the selected one, and on a settled board either deals again — the same three
+   * things a pointer can do, in the same order.
+   */
+  const onKeyDown = (e: React.KeyboardEvent): void => {
+    const bet = e.key === 'Enter' || e.key === ' ';
+    if (st.phase === 'settled') {
+      if (bet) { e.preventDefault(); deal(); }
+      return;
+    }
+    // mid-replay the board is not taking instructions, exactly as with a pointer
+    if (st.phase !== 'idle') return;
+    const n = boardMenu(st.l).length;
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const down = e.key === 'ArrowDown';
+      // entering the menu from nowhere lands on the near end, not on row 0 both times
+      const from = st.hover ?? (down ? -1 : n);
+      focusRow(Math.max(0, Math.min(n - 1, from + (down ? 1 : -1))));
+      return;
+    }
+    if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      focusRow(e.key === 'Home' ? 0 : n - 1);
+      return;
+    }
+    if (e.key >= '1' && e.key <= '9') {
+      const i = Number(e.key) - 1;
+      // a board with four rows has no row 6: ignore it rather than clamping onto a
+      // ticket the player did not ask for
+      if (i < n) { e.preventDefault(); focusRow(i); }
+      return;
+    }
+    if (bet && st.hover !== null) {
+      e.preventDefault();
+      const propId = propAtRow(st.hover);
+      if (propId !== undefined) buy(propId);
+    }
   };
 
   // ---- the DOM copy: how the frame reaches a screen reader and a phone (ui.md §8.5) --
@@ -389,8 +445,16 @@ export function App() {
       <canvas
         ref={cv}
         className="board"
+        // The board joins the tab order: it is the primary control of this page, and a
+        // canvas is not focusable by default, so before this the only reachable controls
+        // were the three cabinet buttons.
+        tabIndex={0}
+        role="application"
+        aria-label="Replay board. Arrow keys choose a ticket, Enter bets it."
+        aria-describedby="board-state"
         onPointerMove={onMove}
         onPointerDown={onDown}
+        onKeyDown={onKeyDown}
         style={{ cursor: st.phase === 'idle' && st.hover !== null ? 'pointer' : st.phase === 'settled' ? 'pointer' : 'default' }}
       />
       {/* ui.md §1.4 — the one gradient in the build, for 400ms, once per page load.
@@ -513,12 +577,13 @@ export function App() {
       <div className="crt" />
       <div className="vignette" />
       </div>
-      <p className="sr">
+      <p className="sr" id="board-state">
         Final score {st.winnerSide === 'HOME' ? 'HOME' : 'AWAY'} {13 - st.l},{' '}
         {st.winnerSide === 'HOME' ? 'AWAY' : 'HOME'} {st.l}. {rows[0].total.toLocaleString()} orderings
         of the 13 points end this way. Pick one:{' '}
         {rows.map(r => `${r.prop}, ${r.count} of ${r.total}, pays ${formatPayout(r).replace('×', '')} times`).join('. ')}.
         Expected value is the same on every ticket. Return to player 97 percent.
+        Use the arrow keys or the number keys to choose a ticket, then Enter to bet it.
         {st.result && ` Result: ${st.result.won ? 'won' : 'lost'}, path ${st.result.pathId}.`}
       </p>
     </div>
