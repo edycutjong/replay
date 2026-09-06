@@ -37,6 +37,9 @@ jobs:
       - name: types
         run: npm run check-types
 
+      - name: lint
+        run: npm run lint
+
       - name: tests
         run: npm test
 
