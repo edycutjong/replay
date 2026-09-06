@@ -1,3 +1,13 @@
+## [1.2.4](https://github.com/edycutjong/replay/compare/v1.2.3...v1.2.4) (2026-09-06)
+
+### Fixes
+
+* **ui:** trim the play-money badge to two words ([b73cdf9](https://github.com/edycutjong/replay/commit/b73cdf9c8381f60bb3d086cf331e8be6cbe9360b))
+
+### Docs
+
+* add a DoraHacks badge to the README ([6f81c50](https://github.com/edycutjong/replay/commit/6f81c50e646ab363cdeabf5ab85ea6d6aeeebef7))
+
 ## [1.2.3](https://github.com/edycutjong/replay/compare/v1.2.2...v1.2.3) (2026-09-06)
 
 ### Fixes
