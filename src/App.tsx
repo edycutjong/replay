@@ -40,7 +40,7 @@ export function App() {
   /** the full viewport box — what the board is sized to FIT INTO. Measured here rather
    *  than on the canvas's own parent, which is now .stage and shrink-wraps the canvas,
    *  so reading it would make the board's size depend on the board's size. */
-  const cab = useRef<HTMLDivElement>(null);
+  const cab = useRef<HTMLElement>(null);
   /** the board's displayed box; carries --lamp, the DOM layer's unit of length */
   const stage = useRef<HTMLDivElement>(null);
   /** how far the board had to shrink to fit, 1 when it did not. The boot overlay is
@@ -469,7 +469,9 @@ export function App() {
   // ---- the DOM copy: how the frame reaches a screen reader and a phone (ui.md §8.5) --
   const rows = boardMenu(st.l);
   return (
-    <div className="cabinet" ref={cab}>
+    // <main>, not <div>: a page with no landmark gives a screen-reader user no way
+    // to skip to the thing the page is for, and this page is one control.
+    <main className="cabinet" ref={cab}>
       {/* THE STAGE is exactly the board's displayed box, and every overlay below is its
           child. They used to be children of .cabinet, i.e. of the whole viewport, which
           was the same rectangle only while the board filled it — once the board became a
@@ -538,10 +540,10 @@ export function App() {
       {!boot && st.phase !== 'settled' && (
         <div className="controls">
           <button className="btn" onClick={() => setTurbo(t => !t)} aria-pressed={turbo} title="Turbo (T)" aria-keyshortcuts="t">
-            <span className="lamp" aria-hidden="true" /><kbd className="key" aria-hidden="true">T</kbd>TURBO
+            <span className="lamp" aria-hidden="true" /><kbd className="key">T</kbd>TURBO
           </button>
           <button className="btn" onClick={() => setHelp(h => !h)} aria-pressed={help} aria-expanded={help} title="How it works (H)" aria-keyshortcuts="h">
-            <span className="lamp" aria-hidden="true" /><kbd className="key" aria-hidden="true">H</kbd>HOW IT WORKS
+            <span className="lamp" aria-hidden="true" /><kbd className="key">H</kbd>HOW IT WORKS
           </button>
           <button
             className="btn"
@@ -550,14 +552,14 @@ export function App() {
             title="Sound (M)"
             aria-keyshortcuts="m"
           >
-            <span className="lamp" aria-hidden="true" /><kbd className="key" aria-hidden="true">M</kbd>SOUND
+            <span className="lamp" aria-hidden="true" /><kbd className="key">M</kbd>SOUND
           </button>
           {/* The escape hatch from the published reel. Without it a seeded demo is a
               fixed sequence a player can memorise, which is the one way a curated reel
               could cost us the Fun criterion it exists to serve. */}
           {!bridged && (
             <button className="btn" onClick={newReel} title="New reel (N)" aria-keyshortcuts="n">
-              <span className="lamp" aria-hidden="true" /><kbd className="key" aria-hidden="true">N</kbd>NEW REEL
+              <span className="lamp" aria-hidden="true" /><kbd className="key">N</kbd>NEW REEL
             </button>
           )}
           {/* The board's own keys. `aria-hidden` because the canvas already announces them
@@ -638,6 +640,6 @@ export function App() {
         Use the arrow keys or the number keys to choose a ticket, then Enter to bet it.
         {st.result && ` Result: ${st.result.won ? 'won' : 'lost'}, path ${st.result.pathId}.`}
       </p>
-    </div>
+    </main>
   );
 }
