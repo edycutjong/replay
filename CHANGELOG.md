@@ -1,3 +1,9 @@
+## [1.0.2](https://github.com/edycutjong/replay/compare/v1.0.1...v1.0.2) (2026-09-06)
+
+### Fixes
+
+* **replay:** make the ghost touch reachable and the entropy label true ([371ca56](https://github.com/edycutjong/replay/commit/371ca564e65e32159b9145ed74bcfa59f46e86d4))
+
 ## [1.0.1](https://github.com/edycutjong/replay/compare/v1.0.0...v1.0.1) (2026-09-06)
 
 ### Render and performance
