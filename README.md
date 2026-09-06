@@ -6,7 +6,7 @@
 
 **See the final score first. Then bet on how the game got there.**
 
-<img src="./docs/readme-hero-animated.svg" width="100%" alt="Replay — the cold open">
+<img src="./docs/readme-hero.png" width="100%" alt="Replay — the cold open">
 
 All 1,287 orderings on the 8–5 board were swept against the deployed facet: exactly **13**
 win, matching `C(13,1)`, and each pays the **96.03×** cap to the wei. Reproduce it with
