@@ -181,12 +181,21 @@ tag exactly once in the raw HTML, and the manifest at the origin.
 Open the URL. The posted score, the full priced menu and `13 OF 1,287 · 96.03×` are on
 screen in **zero clicks** — no splash, no modal, no connect-wallet, no tutorial.
 
-Pick a row. The 13 points then replay one at a time, and the pacing is derived from the
-geometry rather than scripted: a beat that resolves your ticket gets a 180 ms pre-hold, a
-beat that brings the line within one point of your row gets 320 ms, and a beat after your
-ticket is already dead gets 90 ms — *unless* the line comes back and touches the row it
-missed, which gets its own 500 ms in silence. That last one is the whole reason the tail
-exists.
+Pick a row. **The score drops to 0−0 and counts back up**, one point at a time, landing on
+the posted score at beat 13 — the number you were shown before you bet, arriving rather than
+merely asserted.
+
+The pacing is derived from the geometry rather than scripted: a beat that resolves your
+ticket gets a 180 ms pre-hold, and a beat that brings the line within one point of your row
+gets 320 ms. A beat after your ticket is already dead is *damped, not flattened* — it keeps
+the same proximity curve one step quieter, so a line that comes back near the row it missed
+still gets room to be seen while the far tail stays at 90 ms and the round does not drag.
+*Unless* the line comes back and actually touches the row it missed, which gets its own
+500 ms in silence. That last one is the whole reason the tail exists.
+
+When a ticket dies, a red gate marks the beat it died on, and the rest of the line still
+plays out above or below it — a red fence says "dead", not "dead **here**", and how close
+it came afterwards is the part worth seeing.
 
 **Turn SOUND on.** The winner's point and the loser's point are different pitches, so a
 comeback is audible with your eyes shut, and the crowd's gain tracks how far the line is
