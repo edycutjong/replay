@@ -27,7 +27,7 @@ win, matching `C(13,1)`, and each pays the **96.03×** cap to the wei. Reproduce
 ![ICasinoGameV2](https://img.shields.io/badge/ICasinoGameV2-implemented-FFA51E?style=flat-square)
 ![RTP](https://img.shields.io/badge/declared_RTP-97%25-3DFF6E?style=flat-square)
 ![Max](https://img.shields.io/badge/max_payout-96.03×-FFA51E?style=flat-square)
-![Tests](https://img.shields.io/badge/tests-255_passing-3DFF6E?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-272_passing-3DFF6E?style=flat-square)
 ![Coverage](https://img.shields.io/badge/game_logic_coverage-100%25-3DFF6E?style=flat-square)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/edycutjong/replay/actions/workflows/deploy.yml/badge.svg)](https://github.com/edycutjong/replay/actions/workflows/deploy.yml)
@@ -128,12 +128,12 @@ Three integration details worth checking:
 
 | Measure | Result | How it is checked |
 |---|---|---|
-| Tests | **255 passing** | `npm test` — the closed-form paytable plus render, audio, bridge and UI |
+| Tests | **272 passing** | `npm test` — the closed-form paytable plus render, audio, bridge and UI |
 | Game-logic coverage | **100%** | `npm run coverage` — statements, branches, functions, lines, thresholds enforced |
 | Ordering sweep | **4,082** across all five boards | `npm run bench` Block A, brute force vs. the closed forms |
 | Golden digests | **6 of 6** reproduced | combined `0x6ec73a1c…2720` over the 8,164-byte preimage |
-| Cold open | **p95 65 ms** (budget 1,200) | `npm run bench` Block B, headless Chromium on the built `dist` |
-| Replay frame | **p95 9.4 ms** (60 fps budget) | measured as real `rAF` deltas during a live round |
+| Cold open | **p95 70 ms** (budget 1,200) | `npm run bench` Block B, headless Chromium on the built `dist` |
+| Replay frame | **p95 11.5 ms** (60 fps budget, 20 ms) | measured as real `rAF` deltas during a live round |
 | UI gates | **9 of 9** | `npm run gates` — hue discipline, integer pitch, menu budget, embeddability |
 | SDK symbols | **9 exercised** | `npm run spike` |
 
@@ -161,7 +161,7 @@ runs standalone with no wallet and no host.
 For the reviewer, in under a minute:
 
 ```sh
-npm test          # 255 tests. The closed-form paytable, render, audio, bridge and UI.
+npm test          # 272 tests. The closed-form paytable, render, audio, bridge and UI.
 npm run coverage  # 100% on src/** — statements, branches, functions, lines
 npm run spike     # 9 @chain/casino-sdk symbols exercised end to end
 npm run bench     # the 4,082-ordering sweep, the golden digests, four render thresholds

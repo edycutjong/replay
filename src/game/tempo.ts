@@ -38,8 +38,26 @@ export function beatTempo(i: BeatInput): Beat {
   // 2 — THE GHOST TOUCH. No crowd, no swell, no pre-hold, no new sound: the silence is
   //     the point. Must precede row 6 or the hero beat is lost.
   if (i.reTouchesNearMiss) return { ms: 500, preHoldMs: 0, crowd: 0, ghost: true, row: 2 };
-  // 6 (evaluated here only for the already-resolved case that is NOT a ghost touch)
-  if (i.alreadyResolved) return { ms: 90, preHoldMs: 0, crowd: 0, ghost: false, row: 6 };
+  // 6 — AFTER THE TICKET IS DECIDED. The round has stopped being a QUESTION but it is
+  //     still the STORY, and a flat 90ms told that story as a blur: a ticket dead on
+  //     beat 3 played beats 4-13 in ~900ms of forced silence. The first external review
+  //     (2026-09-10) read exactly that and called it "the line dies and the round just
+  //     stops... I never get the 'ohh, so close' feeling".
+  //
+  //     The fix is NOT a new rule. This module's thesis is that duration is a function
+  //     of `d`, recomputed every beat, and the flat row 6 was the one place that stopped
+  //     being true. Row 6 is now the same proximity curve as rows 3/4/5, DAMPED: a curve
+  //     that comes back near the row it missed gets room to be seen, the far tail stays
+  //     at 90ms so the round does not drag, and the crowd stays a step under the live
+  //     rows because this is an echo of a decided question, not the question itself.
+  //
+  //     Row 2 still precedes this, so the ghost touch keeps its 500ms of silence and is
+  //     never merely the loudest of these.
+  if (i.alreadyResolved) {
+    if (i.d === 1) return { ms: 260, preHoldMs: 0, crowd: 1, ghost: false, row: 6 };
+    if (i.d === 2) return { ms: 170, preHoldMs: 0, crowd: 0, ghost: false, row: 6 };
+    return { ms: 90, preHoldMs: 0, crowd: 0, ghost: false, row: 6 };
+  }
   // 3/4/5 — proximity to the line
   if (i.d === 1) return { ms: 320, preHoldMs: 0, crowd: 2, ghost: false, row: 3 };
   if (i.d === 2) return { ms: 220, preHoldMs: 0, crowd: 1, ghost: false, row: 4 };

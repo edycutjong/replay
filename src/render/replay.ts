@@ -35,6 +35,42 @@ export function rowForDiff(d: number, w: number, chartY: number): number {
   return chartY + (w - d) * CHART_ROWSTEP;
 }
 
+/**
+ * The RUNNING score after `beat` points have been walked — the numbers the SCORE band
+ * counts up through during a replay.
+ *
+ * A SET bit is a point the LOSER scored, so the loser's total is a popcount over the
+ * first `beat` bits and the winner takes the rest. At beat 13 this returns the posted
+ * score by construction, which is what makes the count-up land exactly on the number
+ * that was on the board before the bet — the product's whole premise, arriving rather
+ * than merely asserted.
+ */
+export function scoreAfter(mask: number, beat: number): { winner: number; loser: number } {
+  const n = Math.max(0, Math.min(beat, 13));
+  let loser = 0;
+  for (let i = 0; i < n; i++) if (((mask >> i) & 1) !== 0) loser++;
+  return { winner: n - loser, loser };
+}
+
+/**
+ * THE KNOCKOUT MARK — a red gate drawn at the beat the ticket became impossible.
+ *
+ * The fence already turns red when the claim dies, but a red line says "dead", not
+ * "dead HERE", and the review that prompted this said the loss reads as the round simply
+ * stopping. This is the WHERE: a short vertical run through the ticket's own row at the
+ * beat `resolveBeat` returned, so the eye can measure the gap between the gate and how
+ * near the curve came afterwards.
+ *
+ * Drawn at d2 under the curve's own d3/d4 nodes — it is context for the walk, never a
+ * competitor to it, and it adds no d4 region to the frame.
+ */
+export function drawKnockout(f: Field, resolvedAt: number, row: number, w: number, chartY: number): void {
+  if (resolvedAt < 0 || resolvedAt > 12) return;
+  const x = CHART_X + (resolvedAt + 1) * CHART_COLSTEP;
+  const y = rowForDiff(row, w, chartY);
+  for (let dy = -2; dy <= 2; dy++) f.lamp(x, y + dy, 'red', 2);
+}
+
 export function drawWalk(
   f: Field,
   mask: number,

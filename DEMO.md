@@ -31,21 +31,22 @@ npm test
 ```
 
 ```
- ✓ test/tempo-codec.test.ts (11 tests) 17ms
- ✓ test/voices.test.ts (20 tests) 20ms
  ✓ test/bulbs.test.ts (20 tests) 25ms
- ✓ test/cold-open.test.ts (23 tests) 59ms
+ ✓ test/voices.test.ts (20 tests) 20ms
+ ✓ test/tempo-codec.test.ts (11 tests) 17ms
  ✓ test/enumeration.test.ts (44 tests) 72ms
+ ✓ test/cold-open.test.ts (24 tests) 59ms
  ✓ test/demo-host.test.ts (18 tests) 17ms
  ✓ test/schedule.test.ts (19 tests) 368ms
+ ✓ test/replay-tension.test.ts (15 tests) 327ms
  ✓ test/replay-curve.test.ts (10 tests) 4ms
  ✓ test/boot-wordmark.test.ts (5 tests) 3ms
  ✓ test/audio.test.ts (3 tests) 3ms
  ✓ test/codec-differential.test.ts (14 tests) 3ms
  ✓ test/use-casino-host.test.tsx (19 tests) 785ms
- ✓ test/app.test.tsx (49 tests) 2464ms
- Test Files  13 passed (13)
-      Tests  255 passed (255)
+ ✓ test/app.test.tsx (50 tests) 2464ms
+ Test Files  14 passed (14)
+      Tests  272 passed (272)
 ```
 
 This rebuilds the entire paytable from the closed forms and asserts, among others:

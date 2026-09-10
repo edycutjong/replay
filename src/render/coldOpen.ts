@@ -9,7 +9,7 @@
 import { Field } from './bulbs';
 import { boardMenu, formatPayout } from '../game/menu';
 import { formatPathId, ticketRow, type GameState, type PropId } from '../game/codec';
-import { drawWalk, curve, rowForDiff, CHART_X, CHART_COLSTEP, CHART_ROWSTEP } from './replay';
+import { drawWalk, curve, rowForDiff, scoreAfter, drawKnockout, CHART_X, CHART_COLSTEP, CHART_ROWSTEP } from './replay';
 
 export const WIDE_COLS = 256, WIDE_ROWS = 152;
 
@@ -51,38 +51,69 @@ export interface FrameState {
    *  beat the claim dies rather than at the end of the round, which is what lets the fence
    *  below mean what its comment has always said it means. */
   refuted: boolean;
+  /** the beat index at which the ticket was decided, or -1 when there is no bet on the
+   *  board. Only the KNOCKOUT MARK reads it, and only on a refuted ticket — this is the
+   *  "dead HERE" the red fence alone could not say. */
+  resolvedAt: number;
 }
 
 const fmtCount = (n: number): string => n.toLocaleString('en-US');
 
 /** The lamp-space rectangle of menu row `i` — the click target. */
+/**
+ * THE ROW HIT TARGET, and it must PARTITION — no overlap, no gap.
+ *
+ * This used to return `y - 1 .. y + 8`, ten lamps on an eight-lamp `rowStep`, so row `i`
+ * and row `i + 1` both claimed the two lamps at `y + 7` and `y + 8`. `hitRow` returns the
+ * FIRST match, so every tap in that seam silently resolved to the UPPER row — and a
+ * mis-hit here does not merely mis-navigate, it spends the stake on a ticket the player
+ * did not choose. The first external review (2026-09-10) hit it on a phone: "the rows are
+ * close together and I nearly hit the wrong one a couple of times."
+ *
+ * Eight lamps each, contiguous and disjoint: `[y - 1, y + 6]` then `[y + 7, y + 14]`. That
+ * is the largest target the row pitch allows without reintroducing an ambiguous seam.
+ */
 export function rowRect(i: number): { y0: number; y1: number; x0: number; x1: number } {
   const y = R.rowY + i * R.rowStep;
-  return { y0: y - 1, y1: y + 8, x0: R.nameX - 2, x1: R.payRight + 2 };
+  return { y0: y - 1, y1: y + R.rowStep - 2, x0: R.nameX - 2, x1: R.payRight + 2 };
 }
 
-/** The chart band, in lamp space — the only region that changes during a replay. */
+/** The chart band, in lamp space. */
 export const CHART_BAND = { c0: 1, r0: R.chartY - 2, c1: WIDE_COLS - 2, r1: R.chartY + R.chartH + 2 };
 
-/** Everything that does NOT change between beats: bezel, score, menu head, rows,
- *  controls, rules line. Rendered once per state change and cached as a bitmap, so a
- *  beat only recomputes the chart band instead of all 4.1M device pixels. */
+/**
+ * THE LIVE BAND — every row that can change between beats, and the only region a beat
+ * repaints. It is the SCORE band and the chart band together, which are contiguous, so
+ * one rectangle still covers both and a beat remains one `drawImage` plus one clipped
+ * lamp pass.
+ *
+ * The SCORE band joined it when the score started counting up (`scoreAfter`). It cannot
+ * simply be keyed into `staticKey` instead: that key drives a FULL-BOARD recompose, which
+ * is the ~12fps path this cache exists to avoid. The band grows from ~31 rows to ~60 of
+ * 152 — still a fraction of the board, and `npm run bench` Block B holds the frame budget.
+ */
+export const LIVE_BAND = { c0: 1, r0: R.scoreY - 1, c1: WIDE_COLS - 2, r1: CHART_BAND.r1 };
+
+/** Everything that does NOT change between beats: bezel, menu head, rows, controls,
+ *  rules line. Rendered once per state change and cached as a bitmap, so a beat only
+ *  recomputes the LIVE band instead of all 4.1M device pixels. The score left this layer
+ *  when it started counting up. */
 export function composeStatic(s: FrameState): Field {
   const f = composeFrame(s);
   const out = new Field(WIDE_COLS, WIDE_ROWS);
   for (const l of f.list()) {
-    if (l.r >= CHART_BAND.r0 && l.r <= CHART_BAND.r1) continue;
+    if (l.r >= LIVE_BAND.r0 && l.r <= LIVE_BAND.r1) continue;
     out.lamp(l.c, l.r, l.ink, l.duty);
   }
   return out;
 }
 
-/** Only the chart band — the walk, the fence, the envelope. */
+/** Only the live band — the counting score, the walk, the fence, the envelope. */
 export function composeChart(s: FrameState): Field {
   const f = composeFrame(s);
   const out = new Field(WIDE_COLS, WIDE_ROWS);
   for (const l of f.list()) {
-    if (l.r < CHART_BAND.r0 || l.r > CHART_BAND.r1) continue;
+    if (l.r < LIVE_BAND.r0 || l.r > LIVE_BAND.r1) continue;
     out.lamp(l.c, l.r, l.ink, l.duty);
   }
   return out;
@@ -102,18 +133,38 @@ export function composeFrame(s: FrameState): Field {
   // ---- SCORE band ----------------------------------------------------------------
   // The LABEL is TEXT (1x); only the NUMERAL is SCORE (4x). Setting the whole string at
   // 4x needs 320 lamp columns on a 256-column board — which is what clipped it.
-  const home = s.winnerSide === 'HOME' ? w : s.l, away = s.winnerSide === 'HOME' ? s.l : w;
+  // THE SCORE COUNTS UP. Idle posts the final score — it is the premise, and it is on the
+  // board before a cent moves. The moment the walk starts, these numerals become the
+  // RUNNING score and climb, beat by beat, to land on that same posted pair at beat 13.
+  //
+  // This is not a spoiler and it is not new information: the player has already read the
+  // final score, and every intermediate value is a popcount over the mask already being
+  // drawn six rows below. What it buys is the premise ARRIVING instead of being asserted
+  // — "you already know the score, bet on how it happened" is a sentence until you watch
+  // the score assemble itself. The reconcile pulse at beat 13 (`--t-reconcile`, both
+  // numerals to d4) has always existed to mark that landing; until now it fired on
+  // numbers that had never moved.
+  const live = s.phase !== 'idle' && s.result ? scoreAfter(s.result.mask, s.beat) : null;
+  const homeFinal = s.winnerSide === 'HOME' ? w : s.l, awayFinal = s.winnerSide === 'HOME' ? s.l : w;
+  const home = live ? (s.winnerSide === 'HOME' ? live.winner : live.loser) : homeFinal;
+  const away = live ? (s.winnerSide === 'HOME' ? live.loser : live.winner) : awayFinal;
   const NUM = 4, LAB = 1;
   const labDrop = Math.round((Field.glyphH(NUM) - Field.glyphH(LAB)) / 2);
   const wLab = Field.textWidth('HOME', LAB);
-  const wNum = Field.textWidth(String(home), NUM), wNum2 = Field.textWidth(String(away), NUM);
+  // WIDTHS ARE RESERVED FROM THE FINAL SCORE, NEVER THE RUNNING ONE. The band is centred,
+  // so sizing it to the live digits would re-centre the whole row the beat a score crosses
+  // 9 -> 10 (the 10-3 and 11-2 boards both do), and the labels, the bar and both numerals
+  // would visibly jump mid-replay. Reserving the final width and RIGHT-ALIGNING each
+  // numeral into its own slot keeps every glyph on its integer column for the whole round:
+  // the digits climb in place, which is what a real scoreboard does.
+  const wNum = Field.textWidth(String(homeFinal), NUM), wNum2 = Field.textWidth(String(awayFinal), NUM);
   const bar = Field.scoreBarWidth(NUM), g1 = 6, g2 = 10;
   let x = Math.round((WIDE_COLS - (wLab + g1 + wNum + g2 + bar + g2 + wLab + g1 + wNum2)) / 2);
   f.text(x, R.scoreY + labDrop, 'HOME', 'amber', 2, LAB); x += wLab + g1;
-  f.text(x, R.scoreY, String(home), 'amber', 4, NUM); x += wNum + g2;
+  f.text(x + wNum - Field.textWidth(String(home), NUM), R.scoreY, String(home), 'amber', 4, NUM); x += wNum + g2;
   f.scoreBar(x, R.scoreY, 'amber', 3, NUM); x += bar + g2;
   f.text(x, R.scoreY + labDrop, 'AWAY', 'amber', 2, LAB); x += wLab + g1;
-  f.text(x, R.scoreY, String(away), 'amber', 4, NUM);
+  f.text(x + wNum2 - Field.textWidth(String(away), NUM), R.scoreY, String(away), 'amber', 4, NUM);
 
   // The meta readout is NOT drawn here — ui.md §2.6 names three things that are not
   // bulbs, and the 45-glyph set has no '%' for exactly that reason.
@@ -157,6 +208,9 @@ export function composeFrame(s: FrameState): Field {
       pux = x; puy = uy; plx = x; ply = ly;
     }
   } else if (s.result) {
+    // The gate BEFORE the walk, so the curve's own d3 nodes and d4 head always draw over
+    // it: the mark is where the ticket died, never a thing competing with the line.
+    if (s.refuted && s.propId !== null) drawKnockout(f, s.resolvedAt, ticketRow(s.propId), w, R.chartY);
     drawWalk(f, s.result.mask, s.beat, R.chartY, w, { headHot: s.headHot, ghost: s.ghost });
   }
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { geometry, makeSprites, renderCanvas, lampRegion, drawSocketField, type Geometry } from './render/bulbs';
-import { composeStatic, composeChart, CHART_BAND, rowRect, rowIndexForProp, WIDE_COLS, WIDE_ROWS, type FrameState } from './render/coldOpen';
+import { composeStatic, composeChart, LIVE_BAND, rowRect, rowIndexForProp, WIDE_COLS, WIDE_ROWS, type FrameState } from './render/coldOpen';
 import { boardMenu, formatPayout, toNumber } from './game/menu';
 import { encodeAbiParameters } from 'viem';
 import { type GameState, type PropId } from './game/codec';
@@ -100,7 +100,7 @@ export function App() {
   })();
   const [st, setSt] = useState<FrameState>({
     ...FIRST, phase: 'idle', propId: null, hover: null, result: null,
-    beat: 0, headHot: false, ghost: false, refuted: false,
+    beat: 0, headHot: false, ghost: false, refuted: false, resolvedAt: -1,
   });
 
   // ---- render -------------------------------------------------------------------
@@ -201,9 +201,9 @@ export function App() {
       lastStaticKey.current = staticKey;
     }
 
-    const region = lampRegion(geo, sprites, CHART_BAND.c0, CHART_BAND.r0, CHART_BAND.c1, CHART_BAND.r1);
+    const region = lampRegion(geo, sprites, LIVE_BAND.c0, LIVE_BAND.r0, LIVE_BAND.c1, LIVE_BAND.r1);
     ctx.drawImage(base, 0, 0);                                  // cheap GPU blit
-    renderCanvas(composeChart(st), ctx, geo, sprites, region);   // ~13x fewer pixels
+    renderCanvas(composeChart(st), ctx, geo, sprites, region);   // still a fraction of the board
   }, [st, staticKey, boot]);
 
   useEffect(() => {
@@ -252,7 +252,10 @@ export function App() {
     const plan = planReplay(result.mask, result.l, propId, turbo);
 
     setSt(s => ({
+      // `resolvedAt` comes from the SAME plan that drives the tempo, so the knockout mark
+      // and the beat that slowed down for it can never disagree about where the ticket died.
       ...s, phase: 'replay', propId, result, beat: 0, headHot: false, ghost: false, refuted: false,
+      resolvedAt: plan.resolvedAt,
     }));
     clearTimers();
     const v = voices.current!;
@@ -311,7 +314,7 @@ export function App() {
         [st.l, propId],
       );
       setSt(s => ({
-        ...s, phase: 'replay', propId, result: null, beat: 0, headHot: false, ghost: false, refuted: false,
+        ...s, phase: 'replay', propId, result: null, beat: 0, headHot: false, ghost: false, refuted: false, resolvedAt: -1,
       }));
       clearTimers();
       const v = voices.current!;
@@ -418,7 +421,7 @@ export function App() {
     });
     setSt({
       l, winnerSide, phase: 'idle', propId: null, hover: null, result: null,
-      beat: 0, headHot: false, ghost: false, refuted: false,
+      beat: 0, headHot: false, ghost: false, refuted: false, resolvedAt: -1,
     });
   }, [src]);
 

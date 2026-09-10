@@ -10,7 +10,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  composeFrame, composeStatic, composeChart, CHART_BAND, rowRect, rowIndexForProp,
+  composeFrame, composeStatic, composeChart, CHART_BAND, LIVE_BAND, rowRect, rowIndexForProp,
   WIDE_COLS, WIDE_ROWS, R, type FrameState,
 } from '../src/render/coldOpen';
 import { rowForDiff, CHART_X, CHART_COLSTEP } from '../src/render/replay';
@@ -23,7 +23,7 @@ const RESULT: GameState = {
 
 const base: FrameState = {
   l: 5, winnerSide: 'HOME', phase: 'idle', propId: null, hover: null, result: null,
-  beat: 0, headHot: false, ghost: false, refuted: false,
+  beat: 0, headHot: false, ghost: false, refuted: false, resolvedAt: -1,
 };
 
 /** find every lamp on the fence's own row, WITHIN the chart's column span — `run(...
@@ -155,12 +155,21 @@ describe('composeStatic / composeChart — the split that makes a beat cheap', (
     expect(chart.list().every(l => !statKeys.has(key(l)))).toBe(true);
   });
 
-  it('every lamp in composeStatic falls outside the chart band, and vice versa', () => {
+  it('every lamp in composeStatic falls outside the LIVE band, and vice versa', () => {
     const s: FrameState = { ...base, phase: 'idle' };
     const stat = composeStatic(s);
     const chart = composeChart(s);
-    expect(stat.list().every(l => l.r < CHART_BAND.r0 || l.r > CHART_BAND.r1)).toBe(true);
-    expect(chart.list().every(l => l.r >= CHART_BAND.r0 && l.r <= CHART_BAND.r1)).toBe(true);
+    expect(stat.list().every(l => l.r < LIVE_BAND.r0 || l.r > LIVE_BAND.r1)).toBe(true);
+    expect(chart.list().every(l => l.r >= LIVE_BAND.r0 && l.r <= LIVE_BAND.r1)).toBe(true);
+  });
+
+  /** The band is what a beat repaints, so the SCORE has to be INSIDE it now that the
+   *  numerals change every beat, and the chart has to stay inside it. A score left in the
+   *  static layer would be cached and blitted — it would simply never count. */
+  it('the LIVE band contains both the score band and the chart band', () => {
+    expect(LIVE_BAND.r0).toBeLessThanOrEqual(R.scoreY);
+    expect(LIVE_BAND.r1).toBeGreaterThanOrEqual(CHART_BAND.r1);
+    expect(LIVE_BAND.r0).toBeLessThan(CHART_BAND.r0);
   });
 });
 
@@ -201,7 +210,7 @@ describe('the player\'s row and the fence tell the same story', () => {
 
   const state = (over: Partial<FrameState>): FrameState => ({
     l: 5, winnerSide: 'HOME', phase: 'replay', propId: 5, hover: null,
-    result: null, beat: 7, headHot: false, ghost: false, refuted: false, ...over,
+    result: null, beat: 7, headHot: false, ghost: false, refuted: false, resolvedAt: -1, ...over,
   });
 
   it('is green on both while the claim is alive', () => {
