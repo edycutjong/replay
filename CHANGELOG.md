@@ -1,3 +1,13 @@
+## [1.4.0](https://github.com/edycutjong/replay/compare/v1.3.1...v1.4.0) (2026-09-10)
+
+### Game
+
+* **replay:** count the score up, and let a dead ticket finish its story ([a180644](https://github.com/edycutjong/replay/commit/a18064402051d9f422e059f6b57f985565f08205))
+
+### Docs
+
+* **readme:** describe the count-up, the damped tail and the knockout gate ([a57784e](https://github.com/edycutjong/replay/commit/a57784e81fbce30796590275868a874d6f387cd4))
+
 ## [1.3.1](https://github.com/edycutjong/replay/compare/v1.3.0...v1.3.1) (2026-09-06)
 
 ### Fixes
